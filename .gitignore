@@ -1,0 +1,27 @@
+# Environment variables — НИКОГДА не коммить!
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.uv/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node (для miniapp)
+node_modules/
+dist/
+.next/
