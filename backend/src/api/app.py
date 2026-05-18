@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,8 @@ from fastapi.responses import JSONResponse
 from src.core.config import settings
 from src.core.logger import setup_logging, get_logger
 from src.api.routes import me, habits, stats, today, logs, reminders
+from src.bot.setup import create_bot_and_dispatcher
+from src.scheduler.scheduler import create_scheduler
 
 log = get_logger(__name__)
 
@@ -14,8 +17,36 @@ log = get_logger(__name__)
 async def lifespan(app: FastAPI):
     setup_logging()
     log.info("HabitHero API starting", environment=settings.environment)
-    yield
-    log.info("HabitHero API shutting down")
+
+    # --- Start bot polling + scheduler in the same process ---
+    bot, dp = create_bot_and_dispatcher()
+    scheduler = create_scheduler(bot)
+    scheduler.start()
+    log.info("scheduler started")
+
+    await bot.delete_webhook(drop_pending_updates=True)
+    bot_task = asyncio.create_task(dp.start_polling(bot, handle_signals=False))
+    log.info("bot polling started inside API process")
+
+    # Make accessible to handlers/tests if needed
+    app.state.bot = bot
+    app.state.dispatcher = dp
+    app.state.scheduler = scheduler
+
+    try:
+        yield
+    finally:
+        log.info("HabitHero API shutting down")
+        # Stop bot polling cleanly
+        await dp.stop_polling()
+        bot_task.cancel()
+        try:
+            await bot_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        scheduler.shutdown(wait=False)
+        await bot.session.close()
+        log.info("bot + scheduler stopped")
 
 
 app = FastAPI(
@@ -28,6 +59,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.miniapp_url, "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"https://([a-zA-Z0-9-]+\.)*(vercel\.app|lhr\.life|trycloudflare\.com|loca\.lt)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
