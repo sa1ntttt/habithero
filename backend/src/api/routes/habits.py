@@ -139,8 +139,8 @@ async def checkin(
 
     check_date = payload.log_date or _user_today(user)
 
-    # Quantity habit: accumulate value, only mark done when target reached
-    if habit.type == HabitType.quantity and payload.value is not None:
+    # Quantity / timer habit: accumulate value, only mark done when target reached
+    if habit.type in (HabitType.quantity, HabitType.timer) and payload.value is not None:
         increment = float(payload.value)
         log_entry, became_done = await repo.log_value(
             habit_id, user.id, check_date, increment, habit.target_value

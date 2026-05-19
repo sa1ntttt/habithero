@@ -23,8 +23,18 @@ def habit_type_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✅ Бинарная (выполнил / нет)", callback_data="type:binary")
     builder.button(text="📊 Количественная (с целью)", callback_data="type:quantity")
+    builder.button(text="⏱ Таймер (минуты в день)", callback_data="type:timer")
     builder.button(text="⬅️", callback_data="menu:main")
     builder.adjust(1)
+    return builder.as_markup()
+
+
+def timer_target_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for n in (5, 10, 15, 20, 30, 45, 60):
+        builder.button(text=f"{n} мин", callback_data=f"tt:{n}")
+    builder.button(text="✏️ Своё", callback_data="tt:custom")
+    builder.adjust(4, 3, 1)
     return builder.as_markup()
 
 
@@ -33,12 +43,12 @@ def _format_habit_row(habit: Habit, log: Optional[HabitLog]) -> tuple[str, str]:
     streak = habit.streak.current_streak if habit.streak else 0
     streak_label = f"  🔥{streak}" if streak > 0 else ""
 
-    if habit.type == HabitType.quantity and habit.target_value:
+    if habit.type in (HabitType.quantity, HabitType.timer) and habit.target_value:
         current = log.value if log and log.value is not None else 0
         target = habit.target_value
-        unit = habit.unit or ""
+        unit = habit.unit or ("мин" if habit.type == HabitType.timer else "")
         done = log and log.status == LogStatus.done
-        icon = "✅" if done else "📊"
+        icon = "✅" if done else ("⏱" if habit.type == HabitType.timer else "📊")
         progress = f"{int(current) if current == int(current) else current}/{int(target) if target == int(target) else target} {unit}".strip()
         text = f"{icon} {habit.emoji} {habit.name} — {progress}{streak_label}"
         callback = f"qopen:{habit.id}"
@@ -61,16 +71,30 @@ def today_habits_keyboard(habits: list[Habit], logs: dict[int, HabitLog]) -> Inl
     return builder.as_markup()
 
 
-def quantity_increment_keyboard(habit_id: int, target: Optional[float]) -> InlineKeyboardMarkup:
+def quantity_increment_keyboard(
+    habit_id: int,
+    target: Optional[float],
+    is_timer: bool = False,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="+1", callback_data=f"qty:{habit_id}:1")
-    if target and target >= 4:
-        big_step = max(2, int(target / 4))
-        builder.button(text=f"+{big_step}", callback_data=f"qty:{habit_id}:{big_step}")
-    builder.button(text="✏️ Своё", callback_data=f"qtyc:{habit_id}")
-    builder.button(text="🔄 Сбросить", callback_data=f"qtyr:{habit_id}")
-    builder.button(text="⬅️", callback_data="menu:today")
-    builder.adjust(3, 1, 1)
+    if is_timer:
+        # Timer: minutes — preset steps suited for time durations
+        steps = [5, 10, 15]
+        for step in steps:
+            builder.button(text=f"+{step} мин", callback_data=f"qty:{habit_id}:{step}")
+        builder.button(text="✏️ Своё", callback_data=f"qtyc:{habit_id}")
+        builder.button(text="🔄 Сбросить", callback_data=f"qtyr:{habit_id}")
+        builder.button(text="⬅️", callback_data="menu:today")
+        builder.adjust(3, 1, 1, 1)
+    else:
+        builder.button(text="+1", callback_data=f"qty:{habit_id}:1")
+        if target and target >= 4:
+            big_step = max(2, int(target / 4))
+            builder.button(text=f"+{big_step}", callback_data=f"qty:{habit_id}:{big_step}")
+        builder.button(text="✏️ Своё", callback_data=f"qtyc:{habit_id}")
+        builder.button(text="🔄 Сбросить", callback_data=f"qtyr:{habit_id}")
+        builder.button(text="⬅️", callback_data="menu:today")
+        builder.adjust(3, 1, 1)
     return builder.as_markup()
 
 

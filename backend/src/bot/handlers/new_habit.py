@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from datetime import time as time_type
-from src.bot.keyboards.habit_kb import emoji_keyboard, habit_type_keyboard
+from src.bot.keyboards.habit_kb import emoji_keyboard, habit_type_keyboard, timer_target_keyboard
 from src.bot.keyboards.schedule_kb import (
     schedule_type_keyboard,
     weekdays_keyboard,
@@ -120,6 +120,35 @@ async def handle_type_choice(callback: CallbackQuery, state: FSMContext) -> None
         )
         return
 
+    if type_value == "timer":
+        await state.update_data(habit_type="timer", unit="мин")
+        await state.set_state(NewHabitStates.waiting_for_target_value)
+        await callback.message.edit_text(
+            "⏱ Сколько минут в день — твоя цель?",
+            parse_mode="HTML",
+            reply_markup=timer_target_keyboard(),
+        )
+        return
+
+
+@router.callback_query(NewHabitStates.waiting_for_target_value, F.data.startswith("tt:"))
+async def handle_timer_target_preset(callback: CallbackQuery, state: FSMContext) -> None:
+    value_str = callback.data.split(":", 1)[1]
+    if value_str == "custom":
+        await callback.message.edit_text(
+            "⏱ Введи число минут (например, <code>25</code> или <code>90</code>):",
+            parse_mode="HTML",
+        )
+        return
+    try:
+        minutes = float(value_str)
+    except ValueError:
+        await callback.answer("Ошибка")
+        return
+    await state.update_data(target_value=minutes)
+    # Timer: unit already set, skip unit step → go straight to schedule
+    await _ask_schedule(callback.message, state, edit=True)
+
 
 @router.message(NewHabitStates.waiting_for_target_value)
 async def handle_target_value(message: Message, state: FSMContext) -> None:
@@ -134,6 +163,13 @@ async def handle_target_value(message: Message, state: FSMContext) -> None:
         return
 
     await state.update_data(target_value=value)
+
+    data = await state.get_data()
+    # Timer: unit already set ("мин"), skip unit prompt
+    if data.get("habit_type") == "timer":
+        await _ask_schedule(message, state, edit=False)
+        return
+
     await state.set_state(NewHabitStates.waiting_for_unit)
     await message.answer(
         "📏 В каких единицах? (одно слово)\n\n"
@@ -291,8 +327,14 @@ async def _create_habit(message: Message, state: FSMContext, session: AsyncSessi
         return
 
     type_str = data.get("habit_type", "binary")
-    habit_type = HabitType.quantity if type_str == "quantity" else HabitType.binary
+    if type_str == "quantity":
+        habit_type = HabitType.quantity
+    elif type_str == "timer":
+        habit_type = HabitType.timer
+    else:
+        habit_type = HabitType.binary
 
+    has_target = habit_type in (HabitType.quantity, HabitType.timer)
     habit = await habit_repo.create(
         user_id=user.id,
         name=data["name"],
@@ -300,8 +342,8 @@ async def _create_habit(message: Message, state: FSMContext, session: AsyncSessi
         description=description,
         habit_type=habit_type,
         schedule=data.get("schedule", {"type": "daily"}),
-        target_value=data.get("target_value") if habit_type == HabitType.quantity else None,
-        unit=data.get("unit") if habit_type == HabitType.quantity else None,
+        target_value=data.get("target_value") if has_target else None,
+        unit=data.get("unit") if has_target else None,
     )
 
     log.info("habit created", user_id=user.id, habit_id=habit.id, name=habit.name, type=type_str)
@@ -311,6 +353,8 @@ async def _create_habit(message: Message, state: FSMContext, session: AsyncSessi
     target_line = ""
     if habit.type == HabitType.quantity:
         target_line = f"🎯 Цель: {habit.target_value} {habit.unit or ''}\n"
+    elif habit.type == HabitType.timer:
+        target_line = f"⏱ Цель: {habit.target_value} мин в день\n"
 
     # Save habit_id and proceed to reminder step
     await state.update_data(created_habit_id=habit.id)
