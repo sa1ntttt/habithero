@@ -8,6 +8,9 @@ import type {
   ReminderOut,
   ReminderCreate,
   AchievementOut,
+  FriendOut,
+  InviteLinkOut,
+  FeedItem,
 } from "../types/api";
 
 // Empty by default → relative paths (Vite proxy handles /api/* to backend).
@@ -105,6 +108,14 @@ export const api = {
     request<void>(`/api/reminders/${id}`, { method: "DELETE" }),
 
   listAchievements: () => request<AchievementOut[]>("/api/achievements"),
+
+  listFriends: () => request<FriendOut[]>("/api/friends"),
+  getInviteLink: () => request<InviteLinkOut>("/api/friends/invite-link"),
+  unfriend: (userId: number) =>
+    request<void>(`/api/friends/${userId}`, { method: "DELETE" }),
+
+  getFeed: (limit = 50, days = 30) =>
+    request<FeedItem[]>(`/api/feed?limit=${limit}&days=${days}`),
 };
 
 export { ApiError };

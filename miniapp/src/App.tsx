@@ -7,6 +7,7 @@ import { HabitDetail } from "./pages/HabitDetail";
 import { NewHabit } from "./pages/NewHabit";
 import { Stats } from "./pages/Stats";
 import { Profile } from "./pages/Profile";
+import { Friends } from "./pages/Friends";
 import { Navigation } from "./components/Navigation";
 import { useTelegram } from "./hooks/useTelegram";
 import { useAppStore } from "./store/useAppStore";
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/habits/new" element={<NewHabit />} />
           <Route path="/habits/:id" element={<HabitDetail />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/friends" element={<Friends />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>

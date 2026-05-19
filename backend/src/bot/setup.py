@@ -17,6 +17,7 @@ from src.bot.handlers import (
     menu,
     app as app_handler,
     reminders as reminders_handler,
+    friends as friends_handler,
 )
 
 
@@ -35,6 +36,7 @@ def create_bot_and_dispatcher() -> tuple[Bot, Dispatcher]:
     dp.include_router(today.router)
     dp.include_router(stats.router)
     dp.include_router(reminders_handler.router)
+    dp.include_router(friends_handler.router)
     dp.include_router(app_handler.router)
     dp.include_router(help_handler.router)
 

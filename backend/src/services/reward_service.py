@@ -12,6 +12,7 @@ from src.services.achievement_service import (
     AchievementUnlock,
 )
 from src.services.streak_service import StreakUpdateResult
+from src.services.activity_service import log_checkin, log_achievement, log_level_up
 
 
 XP_PER_CHECKIN = 10
@@ -75,5 +76,20 @@ async def process_checkin_reward(
             xp_award.xp_earned += level_unlocks.total_bonus_xp
             xp_award.total_xp = user.total_xp
             xp_award.new_level = user.level
+
+    # 6. Log activity events for friend feed
+    if streak_result.streak_grew:
+        await log_checkin(
+            session,
+            user_id=user.id,
+            habit_id=habit.id,
+            habit_name=habit.name,
+            habit_emoji=habit.emoji,
+            streak=streak_result.streak.current_streak,
+        )
+    for ach in result.new_unlocks:
+        await log_achievement(session, user.id, ach.code, ach.name, ach.icon)
+    if xp_award.level_up:
+        await log_level_up(session, user.id, xp_award.new_level)
 
     return CheckinReward(xp_award=xp_award, new_achievements=result.new_unlocks)

@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from src.core.config import settings
 from src.core.logger import setup_logging, get_logger
-from src.api.routes import me, habits, stats, today, logs, reminders, achievements
+from src.api.routes import me, habits, stats, today, logs, reminders, achievements, friends, feed
 from src.bot.setup import create_bot_and_dispatcher
 from src.scheduler.scheduler import create_scheduler
 
@@ -85,3 +85,5 @@ app.include_router(today.router)
 app.include_router(logs.router)
 app.include_router(reminders.router)
 app.include_router(achievements.router)
+app.include_router(friends.router)
+app.include_router(feed.router)

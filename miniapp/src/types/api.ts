@@ -34,6 +34,29 @@ export interface AchievementUnlockOut {
   xp_reward: number;
 }
 
+export interface FriendOut {
+  id: number;
+  first_name: string;
+  username: string | null;
+  level: number;
+  total_xp: number;
+}
+
+export interface InviteLinkOut {
+  link: string;
+  code: string;
+}
+
+export interface FeedItem {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_first_name: string;
+  event_type: "checkin" | "achievement" | "level_up";
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface StreakOut {
   current_streak: number;
   longest_streak: number;

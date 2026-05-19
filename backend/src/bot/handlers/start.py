@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ import pytz
 from src.bot.keyboards.timezone_kb import timezone_keyboard, confirm_timezone_keyboard
 from src.bot.states.habit_states import TimezoneStates
 from src.db.repositories.user_repo import UserRepository
+from src.services.friendship_service import accept_invitation_by_user_id
 from src.core.logger import get_logger
 
 router = Router()
@@ -15,13 +16,41 @@ log = get_logger(__name__)
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession, state: FSMContext) -> None:
+async def cmd_start(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
     repo = UserRepository(session)
     user, is_new = await repo.get_or_create(
         telegram_id=message.from_user.id,
         first_name=message.from_user.first_name,
         username=message.from_user.username,
     )
+
+    # Handle deep-link friend invitation: /start friend_<user_id>
+    args = (command.args or "").strip()
+    if args.startswith("friend_"):
+        try:
+            inviter_user_id = int(args.removeprefix("friend_"))
+        except ValueError:
+            inviter_user_id = None
+        if inviter_user_id:
+            ok, msg, _inviter = await accept_invitation_by_user_id(
+                session, user, inviter_user_id
+            )
+            await message.answer(msg, parse_mode="HTML")
+            if ok and not is_new:
+                # Show menu for existing user
+                from src.bot.keyboards.habit_kb import main_menu_keyboard
+                from src.core.config import settings
+                await message.answer(
+                    "Чем займёмся?",
+                    parse_mode="HTML",
+                    reply_markup=main_menu_keyboard(settings.miniapp_url),
+                )
+                return
 
     if is_new:
         log.info("new user registered", telegram_id=message.from_user.id)

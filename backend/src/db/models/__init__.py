@@ -4,6 +4,8 @@ from src.db.models.habit_log import HabitLog, LogStatus
 from src.db.models.streak import Streak
 from src.db.models.reminder import Reminder
 from src.db.models.achievement import Achievement, UserAchievement
+from src.db.models.friendship import Friendship, FriendshipStatus
+from src.db.models.activity import ActivityEvent
 
 __all__ = [
     "User",
@@ -15,4 +17,7 @@ __all__ = [
     "Reminder",
     "Achievement",
     "UserAchievement",
+    "Friendship",
+    "FriendshipStatus",
+    "ActivityEvent",
 ]
