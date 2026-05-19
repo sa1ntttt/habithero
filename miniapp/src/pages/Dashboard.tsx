@@ -95,10 +95,7 @@ export function Dashboard() {
   const handleCardClick = (habitId: number) => {
     const item = today.find((it) => it.habit.id === habitId);
     if (!item) return;
-    if (
-      (item.habit.type === "quantity" || item.habit.type === "timer") &&
-      item.habit.target_value != null
-    ) {
+    if (item.habit.type === "quantity" && item.habit.target_value != null) {
       setModalHabitId(habitId);
     } else {
       handleBinaryCheckin(habitId);

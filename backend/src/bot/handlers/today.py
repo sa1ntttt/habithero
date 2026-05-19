@@ -174,7 +174,7 @@ async def open_quantity_habit(callback: CallbackQuery, session: AsyncSession) ->
         await callback.message.edit_text(
             text,
             parse_mode="HTML",
-            reply_markup=quantity_increment_keyboard(habit_id, habit.target_value, is_timer=habit.type == HabitType.timer),
+            reply_markup=quantity_increment_keyboard(habit_id, habit.target_value),
         )
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):
@@ -278,7 +278,7 @@ async def reset_quantity(callback: CallbackQuery, session: AsyncSession) -> None
         await callback.message.edit_text(
             text,
             parse_mode="HTML",
-            reply_markup=quantity_increment_keyboard(habit_id, habit.target_value, is_timer=habit.type == HabitType.timer),
+            reply_markup=quantity_increment_keyboard(habit_id, habit.target_value),
         )
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):
@@ -316,7 +316,7 @@ async def _do_increment(callback: CallbackQuery, session: AsyncSession, user, ha
         await callback.message.edit_text(
             text,
             parse_mode="HTML",
-            reply_markup=quantity_increment_keyboard(habit.id, habit.target_value, is_timer=habit.type == HabitType.timer),
+            reply_markup=quantity_increment_keyboard(habit.id, habit.target_value),
         )
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):

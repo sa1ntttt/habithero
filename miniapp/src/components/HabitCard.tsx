@@ -13,8 +13,7 @@ function fmt(n: number): string {
 
 export function HabitCard({ habit, log, busy = false, onClick }: HabitCardProps) {
   const streak = habit.streak?.current_streak ?? 0;
-  const isQuantity =
-    (habit.type === "quantity" || habit.type === "timer") && habit.target_value != null;
+  const isQuantity = habit.type === "quantity" && habit.target_value != null;
   const done = log?.status === "done";
 
   const currentValue = log?.value ?? 0;

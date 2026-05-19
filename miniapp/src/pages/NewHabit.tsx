@@ -23,12 +23,11 @@ export function NewHabit() {
   const [err, setErr] = useState<string | null>(null);
 
   const targetNumber = Number(targetValue.replace(",", "."));
-  const needsTarget = habitType === "quantity" || habitType === "timer";
-  const isTargetValid =
-    !needsTarget ||
+  const isQuantityValid =
+    habitType !== "quantity" ||
     (Number.isFinite(targetNumber) && targetNumber > 0 && unit.trim().length > 0);
 
-  const canSubmit = name.trim().length >= 2 && isTargetValid && !busy;
+  const canSubmit = name.trim().length >= 2 && isQuantityValid && !busy;
 
   const submit = async () => {
     setErr(null);
@@ -40,8 +39,8 @@ export function NewHabit() {
         emoji,
         description: description.trim() || null,
         type: habitType,
-        target_value: needsTarget ? targetNumber : null,
-        unit: needsTarget ? unit.trim() : null,
+        target_value: habitType === "quantity" ? targetNumber : null,
+        unit: habitType === "quantity" ? unit.trim() : null,
         schedule: schedule as unknown as Record<string, unknown>,
       });
       upsertHabit(habit);
@@ -79,30 +78,18 @@ export function NewHabit() {
       </Field>
 
       <Field label="Тип привычки">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <TypeBtn
             active={habitType === "binary"}
             onClick={() => setHabitType("binary")}
             title="Бинарная"
-            subtitle="✅ Да/нет"
+            subtitle="✅ Выполнил / нет"
           />
           <TypeBtn
             active={habitType === "quantity"}
-            onClick={() => {
-              setHabitType("quantity");
-              if (unit === "мин") setUnit("раз");
-            }}
-            title="Количество"
+            onClick={() => setHabitType("quantity")}
+            title="Количественная"
             subtitle="📊 С целью"
-          />
-          <TypeBtn
-            active={habitType === "timer"}
-            onClick={() => {
-              setHabitType("timer");
-              setUnit("мин");
-            }}
-            title="Таймер"
-            subtitle="⏱ Минуты"
           />
         </div>
       </Field>
@@ -132,36 +119,6 @@ export function NewHabit() {
             />
           </Field>
         </div>
-      )}
-
-      {habitType === "timer" && (
-        <Field label="Цель в день (минут)">
-          <div className="grid grid-cols-4 gap-2">
-            {[5, 10, 15, 20, 30, 45, 60].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setTargetValue(String(n))}
-                className={`rounded-xl py-2 text-sm font-medium ${
-                  Number(targetValue) === n
-                    ? "bg-brand-500 text-white"
-                    : "bg-tg-secondary-bg text-tg-text"
-                }`}
-              >
-                {n} мин
-              </button>
-            ))}
-            <input
-              type="number"
-              inputMode="decimal"
-              min="1"
-              value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
-              placeholder="Своё"
-              className="rounded-xl bg-tg-secondary-bg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
-        </Field>
       )}
 
       <Field label="Расписание">
