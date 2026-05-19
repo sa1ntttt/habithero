@@ -140,27 +140,45 @@ async def checkin(
     check_date = payload.log_date or _user_today(user)
 
     # Quantity habit: accumulate value, only mark done when target reached
+    became_quantity_done = False
     if habit.type == HabitType.quantity and payload.value is not None:
         increment = float(payload.value)
-        log_entry, became_done = await repo.log_value(
+        log_entry, became_quantity_done = await repo.log_value(
             habit_id, user.id, check_date, increment, habit.target_value
         )
-        if became_done:
+        if became_quantity_done:
             result = await apply_checkin(session, habit, check_date)
         else:
-            # Just update streak object without changing it (read current state)
             from src.db.repositories.streak_repo import StreakRepository
             streak = await StreakRepository(session).get_or_create(habit.id)
             from src.services.streak_service import StreakUpdateResult
             result = StreakUpdateResult(streak=streak, streak_grew=False, freezes_used=0)
     else:
-        # Binary habit (or fallback): mark done immediately
         log_entry = await repo.log_done(habit_id, user.id, check_date)
         result = await apply_checkin(session, habit, check_date)
+
+    # Process XP + achievements
+    from src.services.reward_service import process_checkin_reward
+    from src.api.schemas.habit import AchievementUnlockOut
+
+    reward = await process_checkin_reward(
+        session, user, habit, result, check_date,
+        became_quantity_done=became_quantity_done,
+    )
 
     return CheckinResponse(
         log=HabitLogOut.model_validate(log_entry),
         streak=StreakOut.model_validate(result.streak),
         streak_grew=result.streak_grew,
         freezes_used=result.freezes_used,
+        xp_earned=reward.xp_award.xp_earned,
+        level=reward.xp_award.new_level,
+        level_up=reward.xp_award.level_up,
+        new_achievements=[
+            AchievementUnlockOut(
+                code=a.code, name=a.name, icon=a.icon,
+                description=a.description, xp_reward=a.xp_reward,
+            )
+            for a in reward.new_achievements
+        ],
     )

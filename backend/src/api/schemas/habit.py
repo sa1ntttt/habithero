@@ -92,8 +92,20 @@ class CheckinRequest(BaseModel):
     note: Optional[str] = Field(None, max_length=512)
 
 
+class AchievementUnlockOut(BaseModel):
+    code: str
+    name: str
+    icon: str
+    description: str
+    xp_reward: int
+
+
 class CheckinResponse(BaseModel):
     log: HabitLogOut
     streak: StreakOut
     streak_grew: bool
     freezes_used: int
+    xp_earned: int = 0
+    level: int = 1
+    level_up: bool = False
+    new_achievements: list[AchievementUnlockOut] = []

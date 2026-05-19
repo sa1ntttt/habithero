@@ -15,6 +15,7 @@ from src.db.models.habit import HabitType
 from src.db.models.habit_log import LogStatus
 from src.services.schedule_service import is_scheduled_for_date
 from src.services.streak_service import apply_checkin
+from src.services.reward_service import process_checkin_reward, CheckinReward
 from src.core.logger import get_logger
 
 router = Router()
@@ -118,12 +119,24 @@ async def handle_checkin(callback: CallbackQuery, session: AsyncSession) -> None
     await habit_repo.log_done(habit_id, user.id, today)
 
     streak_result = None
+    reward = None
     if not already_done:
         streak_result = await apply_checkin(session, habit, today)
-        log.info("habit checked in", user_id=user.id, habit_id=habit_id, streak=streak_result.streak.current_streak)
+        reward = await process_checkin_reward(
+            session, user, habit, streak_result, today, became_quantity_done=False
+        )
+        log.info(
+            "habit checked in",
+            user_id=user.id, habit_id=habit_id,
+            streak=streak_result.streak.current_streak,
+            xp_earned=reward.xp_award.xp_earned,
+        )
 
     await session.refresh(habit)
     await _refresh_today_message(callback, session, user)
+
+    if reward:
+        await _send_reward_notifications(callback, reward)
 
     if streak_result and streak_result.streak_grew:
         streak_n = streak_result.streak.current_streak
@@ -240,8 +253,12 @@ async def custom_quantity_input(message: Message, state: FSMContext, session: As
     )
 
     streak_result = None
+    reward = None
     if became_done:
         streak_result = await apply_checkin(session, habit, today)
+        reward = await process_checkin_reward(
+            session, user, habit, streak_result, today, became_quantity_done=True
+        )
 
     await message.answer(
         f"📊 Добавлено: +{_fmt(increment)} {habit.unit or ''}\n"
@@ -252,6 +269,9 @@ async def custom_quantity_input(message: Message, state: FSMContext, session: As
     if streak_result and streak_result.streak_grew:
         streak_n = streak_result.streak.current_streak
         await message.answer(f"🔥 {streak_n} дней подряд!")
+
+    if reward:
+        await _send_reward_notifications(message, reward)
 
 
 @router.callback_query(F.data.startswith("qtyr:"))
@@ -296,8 +316,12 @@ async def _do_increment(callback: CallbackQuery, session: AsyncSession, user, ha
     )
 
     streak_result = None
+    reward = None
     if became_done:
         streak_result = await apply_checkin(session, habit, today)
+        reward = await process_checkin_reward(
+            session, user, habit, streak_result, today, became_quantity_done=True
+        )
 
     current = log_entry.value or 0
     target = habit.target_value or 0
@@ -328,6 +352,9 @@ async def _do_increment(callback: CallbackQuery, session: AsyncSession, user, ha
     else:
         await callback.answer(f"+{_fmt(increment)} {unit}")
 
+    if reward:
+        await _send_reward_notifications(callback, reward)
+
 
 def _fmt(value) -> str:
     """Format a numeric value: drop trailing .0 if integer."""
@@ -347,3 +374,29 @@ def _make_progress_bar(done: int, total: int) -> str:
         return "░░░░░"
     filled = round(done / total * 5)
     return "█" * filled + "░" * (5 - filled)
+
+
+async def _send_reward_notifications(message_or_callback, reward: CheckinReward) -> None:
+    """Send celebration messages for level up and unlocked achievements."""
+    if not reward:
+        return
+    # `message_or_callback` may be Message or CallbackQuery — pick the chat
+    if hasattr(message_or_callback, "message"):
+        send_target = message_or_callback.message
+    else:
+        send_target = message_or_callback
+
+    if reward.xp_award.level_up:
+        await send_target.answer(
+            f"🎖 <b>Уровень {reward.xp_award.new_level}!</b>\n"
+            f"Ты только что вышел на новый уровень 🎉",
+            parse_mode="HTML",
+        )
+
+    for ach in reward.new_achievements:
+        await send_target.answer(
+            f"{ach.icon} <b>Достижение разблокировано!</b>\n\n"
+            f"<b>{ach.name}</b>\n<i>{ach.description}</i>\n\n"
+            f"+{ach.xp_reward} XP",
+            parse_mode="HTML",
+        )

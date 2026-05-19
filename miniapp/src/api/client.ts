@@ -7,6 +7,7 @@ import type {
   TodayResponse,
   ReminderOut,
   ReminderCreate,
+  AchievementOut,
 } from "../types/api";
 
 // Empty by default → relative paths (Vite proxy handles /api/* to backend).
@@ -102,6 +103,8 @@ export const api = {
     }),
   deleteReminder: (id: number) =>
     request<void>(`/api/reminders/${id}`, { method: "DELETE" }),
+
+  listAchievements: () => request<AchievementOut[]>("/api/achievements"),
 };
 
 export { ApiError };

@@ -14,6 +14,9 @@ class UserOut(BaseModel):
     language: str
     level: int
     total_xp: int
+    xp_to_next_level: int = 0
+    xp_in_current_level: int = 0
+    xp_for_current_level: int = 0
     created_at: datetime
 
 

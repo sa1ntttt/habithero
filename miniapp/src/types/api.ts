@@ -7,7 +7,31 @@ export interface UserOut {
   language: string;
   level: number;
   total_xp: number;
+  xp_to_next_level: number;
+  xp_in_current_level: number;
+  xp_for_current_level: number;
   created_at: string;
+}
+
+export interface AchievementOut {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  xp_reward: number;
+  category: string;
+  requirement_value: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
+}
+
+export interface AchievementUnlockOut {
+  code: string;
+  name: string;
+  icon: string;
+  description: string;
+  xp_reward: number;
 }
 
 export interface StreakOut {
@@ -49,6 +73,10 @@ export interface CheckinResponse {
   streak: StreakOut;
   streak_grew: boolean;
   freezes_used: number;
+  xp_earned: number;
+  level: number;
+  level_up: boolean;
+  new_achievements: AchievementUnlockOut[];
 }
 
 export interface OverallStats {
