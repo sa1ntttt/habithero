@@ -108,6 +108,21 @@ async def get_logs(
     return await repo.get_logs_range(habit_id, start, end)
 
 
+@router.post("/{habit_id}/reset_today", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_today(
+    habit_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Reset today's log to 0/failed (for quantity habits)."""
+    repo = HabitRepository(session)
+    habit = await repo.get_by_id(habit_id, user.id)
+    if not habit:
+        raise HTTPException(404, "Habit not found")
+    today = _user_today(user)
+    await repo.reset_today_log(habit_id, today)
+
+
 @router.post("/{habit_id}/checkin", response_model=CheckinResponse)
 async def checkin(
     habit_id: int,
@@ -115,14 +130,33 @@ async def checkin(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
+    from src.db.models.habit import HabitType
+
     repo = HabitRepository(session)
     habit = await repo.get_by_id(habit_id, user.id)
     if not habit:
         raise HTTPException(404, "Habit not found")
 
     check_date = payload.log_date or _user_today(user)
-    log_entry = await repo.log_done(habit_id, user.id, check_date)
-    result = await apply_checkin(session, habit, check_date)
+
+    # Quantity habit: accumulate value, only mark done when target reached
+    if habit.type == HabitType.quantity and payload.value is not None:
+        increment = float(payload.value)
+        log_entry, became_done = await repo.log_value(
+            habit_id, user.id, check_date, increment, habit.target_value
+        )
+        if became_done:
+            result = await apply_checkin(session, habit, check_date)
+        else:
+            # Just update streak object without changing it (read current state)
+            from src.db.repositories.streak_repo import StreakRepository
+            streak = await StreakRepository(session).get_or_create(habit.id)
+            from src.services.streak_service import StreakUpdateResult
+            result = StreakUpdateResult(streak=streak, streak_grew=False, freezes_used=0)
+    else:
+        # Binary habit (or fallback): mark done immediately
+        log_entry = await repo.log_done(habit_id, user.id, check_date)
+        result = await apply_checkin(session, habit, check_date)
 
     return CheckinResponse(
         log=HabitLogOut.model_validate(log_entry),

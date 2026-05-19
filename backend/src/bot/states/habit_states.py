@@ -5,6 +5,9 @@ class NewHabitStates(StatesGroup):
     waiting_for_name = State()
     waiting_for_emoji = State()
     waiting_for_custom_emoji = State()
+    waiting_for_type = State()
+    waiting_for_target_value = State()
+    waiting_for_unit = State()
     waiting_for_schedule_type = State()
     waiting_for_weekdays = State()
     waiting_for_times_per_week = State()
@@ -13,6 +16,7 @@ class NewHabitStates(StatesGroup):
     waiting_for_reminder_time = State()
     waiting_for_reminder_custom_time = State()
     waiting_for_reminder_days = State()
+    waiting_for_quantity_custom = State()
     confirm = State()
 
 

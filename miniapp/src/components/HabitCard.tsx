@@ -1,14 +1,25 @@
-import type { HabitOut } from "../types/api";
+import type { HabitOut, HabitLogOut } from "../types/api";
 
 interface HabitCardProps {
   habit: HabitOut;
-  done?: boolean;
+  log?: HabitLogOut | null;
   busy?: boolean;
   onClick?: () => void;
 }
 
-export function HabitCard({ habit, done = false, busy = false, onClick }: HabitCardProps) {
+function fmt(n: number): string {
+  return n === Math.floor(n) ? String(n) : n.toFixed(1);
+}
+
+export function HabitCard({ habit, log, busy = false, onClick }: HabitCardProps) {
   const streak = habit.streak?.current_streak ?? 0;
+  const isQuantity = habit.type === "quantity" && habit.target_value != null;
+  const done = log?.status === "done";
+
+  const currentValue = log?.value ?? 0;
+  const target = habit.target_value ?? 0;
+  const progress = target > 0 ? Math.min(100, Math.round((currentValue / target) * 100)) : 0;
+
   return (
     <button
       type="button"
@@ -26,16 +37,37 @@ export function HabitCard({ habit, done = false, busy = false, onClick }: HabitC
         {done ? "✓" : habit.emoji}
       </span>
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <p className={`font-semibold ${done ? "line-through opacity-70" : ""}`}>
           {habit.name}
         </p>
-        {streak > 0 && (
-          <p className="text-xs text-tg-hint">🔥 {streak} дней подряд</p>
+        {isQuantity ? (
+          <>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-xs text-tg-hint">
+                {fmt(currentValue)} / {fmt(target)} {habit.unit || ""}
+              </span>
+              {streak > 0 && (
+                <span className="text-xs text-orange-500">🔥 {streak}</span>
+              )}
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-tg-bg">
+              <div
+                className={`h-full transition-all ${
+                  done ? "bg-emerald-500" : "bg-brand-500"
+                }`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </>
+        ) : (
+          streak > 0 && (
+            <p className="text-xs text-tg-hint">🔥 {streak} дней подряд</p>
+          )
         )}
       </div>
 
-      <span className="text-2xl">{done ? "" : habit.emoji}</span>
+      {!isQuantity && <span className="text-2xl">{done ? "" : habit.emoji}</span>}
     </button>
   );
 }

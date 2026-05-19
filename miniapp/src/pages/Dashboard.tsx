@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { HabitCard } from "../components/HabitCard";
+import { ValueModal } from "../components/ValueModal";
 import { api } from "../api/client";
 import { useTelegram } from "../hooks/useTelegram";
 
@@ -15,6 +16,7 @@ export function Dashboard() {
   const { tg } = useTelegram();
 
   const [busy, setBusy] = useState<number | null>(null);
+  const [modalHabitId, setModalHabitId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +37,7 @@ export function Dashboard() {
   const total = today.length;
   const progress = total === 0 ? 0 : Math.round((done / total) * 100);
 
-  const handleCheckin = async (habitId: number) => {
+  const handleBinaryCheckin = async (habitId: number) => {
     setBusy(habitId);
     tg?.HapticFeedback?.impactOccurred("medium");
     try {
@@ -43,10 +45,9 @@ export function Dashboard() {
       updateTodayItem(habitId, { log: res.log });
       const current = today.find((it) => it.habit.id === habitId);
       if (current) {
-        upsertHabit({ ...current.habit, streak: res.streak });
-        updateTodayItem(habitId, {
-          habit: { ...current.habit, streak: res.streak },
-        });
+        const updatedHabit = { ...current.habit, streak: res.streak };
+        upsertHabit(updatedHabit);
+        updateTodayItem(habitId, { habit: updatedHabit });
       }
       if (res.streak_grew) {
         tg?.HapticFeedback?.notificationOccurred("success");
@@ -57,6 +58,51 @@ export function Dashboard() {
       setBusy(null);
     }
   };
+
+  const handleQuantityIncrement = async (habitId: number, value: number) => {
+    tg?.HapticFeedback?.impactOccurred("light");
+    try {
+      const res = await api.checkin(habitId, { value });
+      updateTodayItem(habitId, { log: res.log });
+      const current = today.find((it) => it.habit.id === habitId);
+      if (current) {
+        const updatedHabit = { ...current.habit, streak: res.streak };
+        upsertHabit(updatedHabit);
+        updateTodayItem(habitId, { habit: updatedHabit });
+      }
+      if (res.streak_grew) {
+        tg?.HapticFeedback?.notificationOccurred("success");
+      }
+    } catch {
+      tg?.HapticFeedback?.notificationOccurred("error");
+    }
+  };
+
+  const handleQuantityReset = async (habitId: number) => {
+    try {
+      await api.resetToday(habitId);
+      const current = today.find((it) => it.habit.id === habitId);
+      if (current && current.log) {
+        updateTodayItem(habitId, {
+          log: { ...current.log, value: 0, status: "failed" },
+        });
+      }
+    } catch {
+      tg?.HapticFeedback?.notificationOccurred("error");
+    }
+  };
+
+  const handleCardClick = (habitId: number) => {
+    const item = today.find((it) => it.habit.id === habitId);
+    if (!item) return;
+    if (item.habit.type === "quantity" && item.habit.target_value != null) {
+      setModalHabitId(habitId);
+    } else {
+      handleBinaryCheckin(habitId);
+    }
+  };
+
+  const modalItem = modalHabitId != null ? today.find((it) => it.habit.id === modalHabitId) : null;
 
   return (
     <div className="space-y-4">
@@ -103,13 +149,23 @@ export function Dashboard() {
             <HabitCard
               key={it.habit.id}
               habit={it.habit}
-              done={it.log?.status === "done"}
+              log={it.log}
               busy={busy === it.habit.id}
-              onClick={() => handleCheckin(it.habit.id)}
+              onClick={() => handleCardClick(it.habit.id)}
             />
           ))
         )}
       </section>
+
+      {modalItem && (
+        <ValueModal
+          habit={modalItem.habit}
+          log={modalItem.log}
+          onClose={() => setModalHabitId(null)}
+          onIncrement={(v) => handleQuantityIncrement(modalItem.habit.id, v)}
+          onReset={() => handleQuantityReset(modalItem.habit.id)}
+        />
+      )}
     </div>
   );
 }

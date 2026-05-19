@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from datetime import time as time_type
-from src.bot.keyboards.habit_kb import emoji_keyboard
+from src.bot.keyboards.habit_kb import emoji_keyboard, habit_type_keyboard
 from src.bot.keyboards.schedule_kb import (
     schedule_type_keyboard,
     weekdays_keyboard,
@@ -76,13 +76,79 @@ async def handle_emoji_choice(callback: CallbackQuery, state: FSMContext) -> Non
         return
 
     await state.update_data(emoji=emoji_value)
-    await _ask_schedule(callback.message, state, edit=True)
+    await _ask_type(callback.message, state, edit=True)
 
 
 @router.message(NewHabitStates.waiting_for_custom_emoji)
 async def handle_custom_emoji(message: Message, state: FSMContext) -> None:
     emoji = message.text.strip()
     await state.update_data(emoji=emoji)
+    await _ask_type(message, state, edit=False)
+
+
+async def _ask_type(message: Message, state: FSMContext, edit: bool) -> None:
+    data = await state.get_data()
+    await state.set_state(NewHabitStates.waiting_for_type)
+    text = (
+        f"{data.get('emoji', '✅')} <b>{data['name']}</b>\n\n"
+        "Шаг 3: Какой тип привычки?\n\n"
+        "<b>Бинарная</b> — выполнил или нет (зарядка, утренний душ)\n"
+        "<b>Количественная</b> — с целью (8 стаканов воды, 30 страниц)"
+    )
+    if edit:
+        await message.edit_text(text, parse_mode="HTML", reply_markup=habit_type_keyboard())
+    else:
+        await message.answer(text, parse_mode="HTML", reply_markup=habit_type_keyboard())
+
+
+@router.callback_query(NewHabitStates.waiting_for_type, F.data.startswith("type:"))
+async def handle_type_choice(callback: CallbackQuery, state: FSMContext) -> None:
+    type_value = callback.data.split(":", 1)[1]
+
+    if type_value == "binary":
+        await state.update_data(habit_type="binary")
+        await _ask_schedule(callback.message, state, edit=True)
+        return
+
+    if type_value == "quantity":
+        await state.update_data(habit_type="quantity")
+        await state.set_state(NewHabitStates.waiting_for_target_value)
+        await callback.message.edit_text(
+            "📊 Какая целевая величина в день?\n\n"
+            "Введи число. Например: <code>8</code> (для воды), <code>30</code> (для страниц), <code>2.5</code> (для км)",
+            parse_mode="HTML",
+        )
+        return
+
+
+@router.message(NewHabitStates.waiting_for_target_value)
+async def handle_target_value(message: Message, state: FSMContext) -> None:
+    raw = message.text.strip().replace(",", ".")
+    try:
+        value = float(raw)
+    except ValueError:
+        await message.answer("❌ Это не число. Введи целое или дробное (например, 8 или 2.5).")
+        return
+    if value <= 0:
+        await message.answer("❌ Цель должна быть больше 0.")
+        return
+
+    await state.update_data(target_value=value)
+    await state.set_state(NewHabitStates.waiting_for_unit)
+    await message.answer(
+        "📏 В каких единицах? (одно слово)\n\n"
+        "Например: <code>стаканов</code>, <code>страниц</code>, <code>км</code>, <code>раз</code>",
+        parse_mode="HTML",
+    )
+
+
+@router.message(NewHabitStates.waiting_for_unit)
+async def handle_unit(message: Message, state: FSMContext) -> None:
+    unit = message.text.strip()
+    if len(unit) > 32:
+        await message.answer("❌ Слишком длинно. Максимум 32 символа.")
+        return
+    await state.update_data(unit=unit)
     await _ask_schedule(message, state, edit=False)
 
 
@@ -224,19 +290,27 @@ async def _create_habit(message: Message, state: FSMContext, session: AsyncSessi
         await state.clear()
         return
 
+    type_str = data.get("habit_type", "binary")
+    habit_type = HabitType.quantity if type_str == "quantity" else HabitType.binary
+
     habit = await habit_repo.create(
         user_id=user.id,
         name=data["name"],
         emoji=data.get("emoji", "✅"),
         description=description,
-        habit_type=HabitType.binary,
+        habit_type=habit_type,
         schedule=data.get("schedule", {"type": "daily"}),
+        target_value=data.get("target_value") if habit_type == HabitType.quantity else None,
+        unit=data.get("unit") if habit_type == HabitType.quantity else None,
     )
 
-    log.info("habit created", user_id=user.id, habit_id=habit.id, name=habit.name)
+    log.info("habit created", user_id=user.id, habit_id=habit.id, name=habit.name, type=type_str)
 
     sched_text = schedule_human_text(habit.schedule)
     desc_line = f"📝 {description}\n" if description else ""
+    target_line = ""
+    if habit.type == HabitType.quantity:
+        target_line = f"🎯 Цель: {habit.target_value} {habit.unit or ''}\n"
 
     # Save habit_id and proceed to reminder step
     await state.update_data(created_habit_id=habit.id)
@@ -245,6 +319,7 @@ async def _create_habit(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(
         f"🎉 Привычка создана!\n\n"
         f"{habit.emoji} <b>{habit.name}</b>\n"
+        f"{target_line}"
         f"⏱ {sched_text}\n"
         f"{desc_line}\n"
         "🔔 Хочешь напоминание? Выбери время или пропусти:",

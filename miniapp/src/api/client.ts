@@ -80,6 +80,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  resetToday: (habitId: number) =>
+    request<void>(`/api/habits/${habitId}/reset_today`, { method: "POST" }),
 
   getStats: () => request<OverallStats>("/api/stats"),
   getToday: () => request<TodayResponse>("/api/today"),

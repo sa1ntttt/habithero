@@ -5,6 +5,7 @@ import { useAppStore } from "../store/useAppStore";
 import { useTelegram } from "../hooks/useTelegram";
 import { EmojiPicker } from "../components/EmojiPicker";
 import { ScheduleEditor, type ScheduleValue } from "../components/ScheduleEditor";
+import type { HabitType } from "../types/api";
 
 export function NewHabit() {
   const navigate = useNavigate();
@@ -14,11 +15,19 @@ export function NewHabit() {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("✅");
   const [description, setDescription] = useState("");
+  const [habitType, setHabitType] = useState<HabitType>("binary");
+  const [targetValue, setTargetValue] = useState<string>("8");
+  const [unit, setUnit] = useState<string>("раз");
   const [schedule, setSchedule] = useState<ScheduleValue>({ type: "daily" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length >= 2 && !busy;
+  const targetNumber = Number(targetValue.replace(",", "."));
+  const isQuantityValid =
+    habitType !== "quantity" ||
+    (Number.isFinite(targetNumber) && targetNumber > 0 && unit.trim().length > 0);
+
+  const canSubmit = name.trim().length >= 2 && isQuantityValid && !busy;
 
   const submit = async () => {
     setErr(null);
@@ -29,6 +38,9 @@ export function NewHabit() {
         name: name.trim(),
         emoji,
         description: description.trim() || null,
+        type: habitType,
+        target_value: habitType === "quantity" ? targetNumber : null,
+        unit: habitType === "quantity" ? unit.trim() : null,
         schedule: schedule as unknown as Record<string, unknown>,
       });
       upsertHabit(habit);
@@ -64,6 +76,50 @@ export function NewHabit() {
       <Field label="Эмодзи">
         <EmojiPicker value={emoji} onChange={setEmoji} />
       </Field>
+
+      <Field label="Тип привычки">
+        <div className="grid grid-cols-2 gap-2">
+          <TypeBtn
+            active={habitType === "binary"}
+            onClick={() => setHabitType("binary")}
+            title="Бинарная"
+            subtitle="✅ Выполнил / нет"
+          />
+          <TypeBtn
+            active={habitType === "quantity"}
+            onClick={() => setHabitType("quantity")}
+            title="Количественная"
+            subtitle="📊 С целью"
+          />
+        </div>
+      </Field>
+
+      {habitType === "quantity" && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Цель в день">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0.1"
+              value={targetValue}
+              onChange={(e) => setTargetValue(e.target.value)}
+              placeholder="8"
+              className="w-full rounded-xl bg-tg-secondary-bg px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </Field>
+          <Field label="Единица">
+            <input
+              type="text"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              placeholder="стаканов"
+              maxLength={32}
+              className="w-full rounded-xl bg-tg-secondary-bg px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </Field>
+        </div>
+      )}
 
       <Field label="Расписание">
         <ScheduleEditor value={schedule} onChange={setSchedule} />
@@ -101,5 +157,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <p className="mb-2 text-sm font-medium text-tg-hint">{label}</p>
       {children}
     </div>
+  );
+}
+
+function TypeBtn({
+  active,
+  onClick,
+  title,
+  subtitle,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-3 py-3 text-left ${
+        active ? "bg-brand-500 text-white" : "bg-tg-secondary-bg text-tg-text"
+      }`}
+    >
+      <div className="text-sm font-semibold">{title}</div>
+      <div className={`text-xs ${active ? "opacity-90" : "text-tg-hint"}`}>{subtitle}</div>
+    </button>
   );
 }

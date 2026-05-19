@@ -33,6 +33,8 @@ class HabitRepository:
         description: Optional[str] = None,
         habit_type: HabitType = HabitType.binary,
         schedule: Optional[dict] = None,
+        target_value: Optional[float] = None,
+        unit: Optional[str] = None,
     ) -> Habit:
         habit = Habit(
             user_id=user_id,
@@ -40,6 +42,8 @@ class HabitRepository:
             emoji=emoji,
             description=description,
             type=habit_type,
+            target_value=target_value,
+            unit=unit,
             schedule=schedule or {"type": "daily"},
         )
         self.session.add(habit)
@@ -67,6 +71,50 @@ class HabitRepository:
                 status=LogStatus.done,
             )
             self.session.add(log)
+        await self.session.commit()
+        await self.session.refresh(log)
+        return log
+
+    async def log_value(
+        self,
+        habit_id: int,
+        user_id: int,
+        log_date: date,
+        increment: float,
+        target: Optional[float],
+    ) -> tuple[HabitLog, bool]:
+        """Accumulate value into today's log. Returns (log, became_done)."""
+        log = await self.get_log_for_date(habit_id, log_date)
+        was_done = log is not None and log.status == LogStatus.done
+
+        if not log:
+            log = HabitLog(
+                habit_id=habit_id,
+                user_id=user_id,
+                log_date=log_date,
+                value=increment,
+                status=LogStatus.failed,
+            )
+            self.session.add(log)
+        else:
+            log.value = (log.value or 0) + increment
+
+        # If target reached, flip to done
+        if target is not None and (log.value or 0) >= target:
+            log.status = LogStatus.done
+
+        await self.session.commit()
+        await self.session.refresh(log)
+        became_done = (log.status == LogStatus.done) and not was_done
+        return log, became_done
+
+    async def reset_today_log(self, habit_id: int, log_date: date) -> Optional[HabitLog]:
+        """Reset today's log: value=0, status=failed. Returns the log if existed."""
+        log = await self.get_log_for_date(habit_id, log_date)
+        if not log:
+            return None
+        log.value = 0
+        log.status = LogStatus.failed
         await self.session.commit()
         await self.session.refresh(log)
         return log
