@@ -1,3 +1,5 @@
+import { Glyph, glyphFor } from "./ui/Glyph";
+
 const PRESET = [
   "✅", "💪", "📚", "🏃", "💧", "🧘", "🎯", "🌟",
   "🍎", "😴", "🚶", "🧠", "🎨", "✍️", "🎵", "💻",
@@ -13,7 +15,10 @@ export function EmojiPicker({ value, onChange }: Props) {
   return (
     <div className="grid grid-cols-8 gap-2">
       {PRESET.map((e) => {
-        const active = value === e;
+        const active = e === value;
+        const glyph = glyphFor(e);
+        const accent = glyph?.color ?? "#A78BFA";
+
         return (
           <button
             key={e}
@@ -21,7 +26,6 @@ export function EmojiPicker({ value, onChange }: Props) {
             onClick={() => onChange(e)}
             className="flex aspect-square items-center justify-center transition"
             style={{
-              fontSize: 22,
               borderRadius: 12,
               background: active
                 ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
@@ -32,10 +36,20 @@ export function EmojiPicker({ value, onChange }: Props) {
               boxShadow: active
                 ? "0 4px 12px -2px rgba(139,92,246,0.4)"
                 : "none",
+              color: active ? "white" : accent,
               cursor: "pointer",
             }}
           >
-            {e}
+            {glyph ? (
+              <Glyph
+                name={glyph.name}
+                size={22}
+                color={active ? "white" : accent}
+                strokeWidth={1.9}
+              />
+            ) : (
+              <span style={{ fontSize: 22 }}>{e}</span>
+            )}
           </button>
         );
       })}

@@ -4,6 +4,7 @@ import { useTelegram } from "../hooks/useTelegram";
 import { api } from "../api/client";
 import { CardSurface } from "../components/ui/CardSurface";
 import { Bar } from "../components/ui/Bar";
+import { Glyph, glyphFor } from "../components/ui/Glyph";
 import type { AchievementOut } from "../types/api";
 
 export function Profile() {
@@ -317,6 +318,10 @@ export function Profile() {
 
 function AchievementTile({ achievement }: { achievement: AchievementOut }) {
   const unlocked = achievement.unlocked;
+  const glyph = glyphFor(achievement.icon);
+  // Unlocked: golden tint always (consistent reward feel). Locked: muted.
+  const accent = unlocked ? "#FBBF24" : "#71717A";
+
   return (
     <div
       title={`${achievement.name}: ${achievement.description}`}
@@ -331,11 +336,22 @@ function AchievementTile({ achievement }: { achievement: AchievementOut }) {
           ? "1px solid rgba(245,158,11,0.18)"
           : "1px solid rgba(255,255,255,0.05)",
         opacity: unlocked ? 1 : 0.55,
-        filter: unlocked ? "none" : "grayscale(1)",
         transition: "all 200ms ease",
       }}
     >
-      <span style={{ fontSize: 28, lineHeight: 1 }}>{achievement.icon}</span>
+      {glyph ? (
+        <Glyph name={glyph.name} size={30} color={accent} strokeWidth={1.9} />
+      ) : (
+        <span
+          style={{
+            fontSize: 28,
+            lineHeight: 1,
+            filter: unlocked ? "none" : "grayscale(1)",
+          }}
+        >
+          {achievement.icon}
+        </span>
+      )}
       <p
         style={{
           marginTop: 6,
