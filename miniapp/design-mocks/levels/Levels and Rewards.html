@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Habitrack — Уровни и награды</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --surface: #1A1A24;
+    --elevated: #252535;
+    --primary: #8B5CF6;
+    --primary-2: #6366F1;
+    --fire: #F97316;
+    --gold: #F59E0B;
+    --gold-2: #D97706;
+    --locked: #3F3F46;
+    --cyan: #06B6D4;
+    --emerald: #10B981;
+    --emerald-2: #059669;
+    --text-1: rgba(255,255,255,0.95);
+    --text-2: #A1A1AA;
+    --text-3: #71717A;
+  }
+  html, body { background: #06060a; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: var(--text-1); }
+  .tab-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+  /* Stage scales the 480 viewport to fit the device frame */
+  .stage { background: var(--bg); }
+
+  /* Hide scrollbars on horizontal strips */
+  .no-bar::-webkit-scrollbar { display: none; }
+  .no-bar { scrollbar-width: none; }
+
+  /* Glass tile inside hero */
+  .glass-tile { background: rgba(255,255,255,0.18); backdrop-filter: blur(8px); }
+
+  /* Soft inner border for elevated tiles */
+  .ring-soft { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+  .ring-purple-glow { box-shadow: 0 0 0 2px rgba(139,92,246,0.35), 0 8px 24px -8px rgba(139,92,246,0.55); }
+  .ring-gold-soft { box-shadow: inset 0 0 0 1px rgba(245,158,11,0.35); }
+
+  /* Dashed connector for level path */
+  .dashed-line {
+    background-image: linear-gradient(to right, rgba(161,161,170,0.35) 50%, transparent 0%);
+    background-size: 8px 1.5px;
+    background-repeat: repeat-x;
+    background-position: 0 50%;
+  }
+
+  /* Progress fills */
+  .xp-fill { background: rgba(255,255,255,0.95); }
+  .xp-track { background: rgba(255,255,255,0.22); }
+
+  /* Active chip */
+  .chip-active {
+    background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+    color: white;
+    box-shadow: 0 4px 14px -4px rgba(139,92,246,0.55);
+  }
+
+  /* Subtle gold gradient for next-reward banner */
+  .gold-banner-bg {
+    background:
+      linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(217,119,6,0.10) 100%),
+      var(--surface);
+    border: 1px solid rgba(245,158,11,0.30);
+  }
+
+  /* Status bar dot pattern (signal bars) not needed; flat. */
+
+  /* Lucide icon stroke default */
+  .ico { stroke-width: 2; }
+
+  /* Hide focus ring noise */
+  button:focus { outline: none; }
+
+  /* Phone frame */
+  .phone-frame {
+    width: 480px;
+    border-radius: 44px;
+    background: #000;
+    padding: 10px;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .phone-inner {
+    border-radius: 36px;
+    overflow: hidden;
+    background: var(--bg);
+    position: relative;
+    height: 980px;
+  }
+  .scroll-area {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .scroll-area::-webkit-scrollbar { width: 0; }
+
+  /* Notch */
+  .notch {
+    position: absolute;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 32px; background: #000; border-radius: 20px; z-index: 50;
+  }
+</style>
+</head>
+<body class="min-h-screen flex items-start justify-center py-10">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // ---------- Icon helper (Lucide) ----------
+    function Icon({ name, size = 20, className = "", strokeWidth = 2, style }) {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!ref.current || !window.lucide) return;
+        ref.current.innerHTML = "";
+        const i = document.createElement("i");
+        i.setAttribute("data-lucide", name);
+        ref.current.appendChild(i);
+        window.lucide.createIcons({
+          attrs: { "stroke-width": strokeWidth, width: size, height: size },
+          nameAttr: "data-lucide",
+          icons: window.lucide
+        });
+      }, [name, size, strokeWidth]);
+      return (
+        <span
+          ref={ref}
+          className={"inline-flex items-center justify-center " + className}
+          style={{ width: size, height: size, lineHeight: 0, ...(style || {}) }}
+        />
+      );
+    }
+
+    // ---------- Data ----------
+    const LEVEL_PATH = [
+      { n: 1, name: "Старт",            xp: 0,    state: "done" },
+      { n: 2, name: "Новичок",          xp: 150,  state: "current" },
+      { n: 3, name: "Стойкий",          xp: 300,  state: "locked" },
+      { n: 4, name: "Упорный",          xp: 600,  state: "locked" },
+      { n: 5, name: "Дисциплина",       xp: 1000, state: "locked" },
+      { n: 6, name: "Мастер",           xp: 1800, state: "locked" },
+      { n: 7, name: "Чемпион",          xp: 3000, state: "locked" },
+    ];
+
+    const XP_RULES = [
+      { icon: "check",     tint: "emerald", label: "Отметить привычку",          xp: "+10 XP" },
+      { icon: "flame",     tint: "fire",    label: "Поддержать стрик",           xp: "+5 XP/день" },
+      { icon: "trophy",    tint: "gold",    label: "Получить награду",           xp: "+10 … +1000" },
+      { icon: "calendar-check", tint: "cyan", label: "Идеальный день / неделя", xp: "+30 / +100" },
+    ];
+
+    // 20 achievements in 7 rows of 3 (last row 2). 
+    const A = (icon, name, xp, unlocked, progress, cat="other", hidden=false) =>
+      ({ icon, name, xp, unlocked, progress, cat, hidden });
+
+    const ACHIEVEMENTS = [
+      // Row 1
+      A("sprout",    "Первый шаг",        10,   true,  null, "volume"),
+      A("sparkles",  "Поехали!",          10,   true,  null, "volume"),
+      A("target",    "Тройка",            25,   false, {cur:2,  max:3},   "streak"),
+      // Row 2
+      A("flame",     "Неделя",            50,   false, {cur:5,  max:7},   "streak"),
+      A("calendar-days","Месяц!",         200,  false, {cur:5,  max:30},  "streak"),
+      A("trophy",    "Сотка",             1000, false, {cur:5,  max:100}, "volume"),
+      // Row 3
+      A("sun",       "Идеальный день",    30,   true,  null, "volume"),
+      A("gem",       "Идеальная неделя",  100,  true,  null, "volume"),
+      A("medal",     "Уровень 5",         50,   false, {cur:2,  max:5},   "levels"),
+      // Row 4
+      A("award",     "Уровень 10",        100,  false, {cur:2,  max:10},  "levels"),
+      A("crown",     "Уровень 20",        500,  false, {cur:2,  max:20},  "levels"),
+      A("star",      "Полугодие",         500,  false, {cur:5,  max:180}, "streak"),
+      // Row 5
+      A("badge-check","Год силы",         1500, false, {cur:5,  max:365}, "streak"),
+      A("brain",     "Дзен",              75,   false, {cur:0,  max:1},   "volume"),
+      A("rocket",    "Стрик 30",          150,  false, {cur:5,  max:30},  "streak"),
+      // Row 6
+      A("leaf",      "Зелёная неделя",    80,   false, {cur:4,  max:7},   "volume"),
+      A("gift",      "Ранняя пташка",     20,   true,  null, "volume"),   // 5th unlocked — designer pick
+      A("help-circle","Скрытая",          0,    false, null, "hidden",   true),
+      // Row 7
+      A("help-circle","Скрытая",          0,    false, null, "hidden",   true),
+      A("help-circle","Скрытая",          0,    false, null, "hidden",   true),
+    ];
+
+    const FILTERS = [
+      { id: "all",    label: "Все" },
+      { id: "streak", label: "Стрик" },
+      { id: "volume", label: "Объём" },
+      { id: "levels", label: "Уровни" },
+      { id: "hidden", label: "Скрытые" },
+    ];
+
+    // ---------- Tint map ----------
+    const tintBg = {
+      emerald: "rgba(16,185,129,0.14)",
+      fire:    "rgba(249,115,22,0.14)",
+      gold:    "rgba(245,158,11,0.15)",
+      cyan:    "rgba(6,182,212,0.14)",
+      purple:  "rgba(139,92,246,0.16)",
+      locked:  "rgba(63,63,70,0.55)",
+    };
+    const tintFg = {
+      emerald: "#10B981",
+      fire:    "#F97316",
+      gold:    "#F59E0B",
+      cyan:    "#06B6D4",
+      purple:  "#A78BFA",
+      locked:  "#52525B",
+    };
+
+    // ---------- Subcomponents ----------
+    function StatusBar() {
+      return (
+        <div className="relative h-[44px] flex items-center justify-between px-7 text-[15px] font-semibold text-white tab-num">
+          <span>9:41</span>
+          <div className="flex items-center gap-1.5 text-white">
+            <Icon name="signal" size={16} strokeWidth={2.5} />
+            <Icon name="wifi" size={16} strokeWidth={2.5} />
+            <div className="ml-1 flex items-center">
+              <div className="relative w-[24px] h-[11px] rounded-[3px] border border-white/70 flex items-center px-[1.5px]">
+                <div className="h-[7px] w-[16px] rounded-[1.5px] bg-white" />
+              </div>
+              <div className="w-[1.5px] h-[4px] bg-white/70 rounded-r" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function MiniAppHeader() {
+      // Telegram Mini App style header strip
+      return (
+        <div className="flex items-center justify-between px-4 pt-1 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#6366F1] flex items-center justify-center">
+              <Icon name="zap" size={14} strokeWidth={2.5} style={{color:"#fff"}} />
+            </div>
+            <div className="leading-tight">
+              <div className="text-[13px] font-semibold text-white">Habitrack</div>
+              <div className="text-[10px] text-[#71717A]">mini app</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-[#A1A1AA]">
+            <Icon name="more-horizontal" size={18} strokeWidth={2} />
+            <Icon name="x" size={18} strokeWidth={2} />
+          </div>
+        </div>
+      );
+    }
+
+    function NavRow() {
+      return (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-2 pb-3">
+          <button className="flex items-center gap-1 text-[#A78BFA] -ml-1 active:opacity-70">
+            <Icon name="chevron-left" size={22} strokeWidth={2.25} />
+            <span className="text-[16px] font-medium">Профиль</span>
+          </button>
+          <div className="text-[17px] font-semibold text-white text-center px-3">Уровни и награды</div>
+          <div />
+        </div>
+      );
+    }
+
+    function LevelHero({ level, xp, xpForNext, nextLevel }) {
+      const pct = Math.round((xp / xpForNext) * 100);
+      const remaining = xpForNext - xp;
+      return (
+        <div
+          className="relative rounded-[28px] overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)",
+            boxShadow: "0 20px 40px -20px rgba(99,102,241,0.55)"
+          }}
+        >
+          {/* Subtle decorative arc */}
+          <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full" style={{background:"radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%)"}} />
+          <div className="absolute -left-8 -bottom-12 w-40 h-40 rounded-full" style={{background:"radial-gradient(circle, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 60%)"}} />
+
+          <div className="relative p-6">
+            <div className="flex items-center gap-4">
+              <div className="glass-tile w-[88px] h-[88px] rounded-2xl flex items-center justify-center">
+                <span className="text-white text-[56px] font-bold leading-none tab-num" style={{letterSpacing:"-0.02em"}}>{level}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-[22px] font-semibold leading-tight">Новичок</span>
+                  <span className="px-2 py-[2px] rounded-full text-[10px] font-semibold tracking-wide uppercase text-white bg-white/20">lvl {level}</span>
+                </div>
+                <div className="mt-1 text-[13px] text-white/75">
+                  До уровня {nextLevel} осталось <span className="font-semibold text-white tab-num">{remaining} XP</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="h-2 rounded-full xp-track overflow-hidden">
+                <div className="h-full xp-fill rounded-full" style={{width: pct + "%"}} />
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-white tab-num">{xp} XP</span>
+                <span className="text-[12px] text-white/70 tab-num">{xpForNext} XP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function LevelPath() {
+      return (
+        <div className="rounded-2xl ring-soft" style={{background:"var(--surface)"}}>
+          <div className="px-[18px] pt-[18px] pb-3 flex items-center justify-between">
+            <div className="text-[16px] font-semibold text-white">Путь уровней</div>
+            <div className="text-[12px] text-[#A1A1AA] tab-num">2 / 20</div>
+          </div>
+
+          <div className="relative">
+            {/* Dashed connector — sits behind tile circles */}
+            <div className="absolute left-[40px] right-[40px] top-[34px] h-[1.5px] dashed-line pointer-events-none" />
+            <div className="flex gap-3 overflow-x-auto no-bar px-[18px] pb-[18px]">
+              {LEVEL_PATH.map((lv) => (
+                <LevelTile key={lv.n} lv={lv} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function LevelTile({ lv }) {
+      const isCurrent = lv.state === "current";
+      const isDone    = lv.state === "done";
+      const isLocked  = lv.state === "locked";
+
+      let bg = "var(--elevated)";
+      let circleBg = "rgba(255,255,255,0.06)";
+      let circleColor = "#A1A1AA";
+      let nameColor = "#A1A1AA";
+      let thresholdColor = "#71717A";
+      let ring = "ring-soft";
+      let scale = "";
+      let badge = null;
+
+      if (isDone) {
+        circleBg = "linear-gradient(135deg,#10B981,#059669)";
+        circleColor = "#fff";
+        nameColor = "#A1A1AA";
+        badge = <Icon name="check" size={10} strokeWidth={3} style={{color:"#fff"}} />;
+      }
+      if (isCurrent) {
+        bg = "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)";
+        circleBg = "rgba(255,255,255,0.22)";
+        circleColor = "#fff";
+        nameColor = "#fff";
+        thresholdColor = "rgba(255,255,255,0.75)";
+        ring = "ring-purple-glow";
+        scale = "scale-[1.06]";
+      }
+      if (isLocked) {
+        circleBg = "rgba(255,255,255,0.04)";
+        circleColor = "#52525B";
+      }
+
+      return (
+        <div
+          className={"shrink-0 w-[72px] h-[108px] rounded-2xl px-2 pt-2 pb-2 flex flex-col items-center text-center " + ring + " " + scale}
+          style={{ background: bg }}
+        >
+          <div
+            className="relative w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: circleBg }}
+          >
+            {isLocked ? (
+              <Icon name="lock" size={14} strokeWidth={2.25} style={{color: circleColor}} />
+            ) : isDone && !isCurrent ? (
+              <Icon name="check" size={16} strokeWidth={2.75} style={{color: circleColor}} />
+            ) : (
+              <span className="text-[14px] font-bold tab-num" style={{color: circleColor}}>{lv.n}</span>
+            )}
+          </div>
+          <div className="mt-2 text-[10px] font-medium leading-tight" style={{color: nameColor}}>
+            {lv.name}
+          </div>
+          <div className="mt-auto text-[9px] tab-num" style={{color: thresholdColor}}>
+            {lv.xp.toLocaleString("ru-RU")} XP
+          </div>
+        </div>
+      );
+    }
+
+    function StatCard({ icon, tint, value, label }) {
+      return (
+        <div className="flex-1 rounded-2xl p-[14px] ring-soft" style={{background:"var(--surface)"}}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background: tintBg[tint]}}>
+            <Icon name={icon} size={18} strokeWidth={2.25} style={{color: tintFg[tint]}} />
+          </div>
+          <div className="mt-3 text-[24px] font-bold text-white leading-none tab-num">{value}</div>
+          <div className="mt-1.5 text-[11px] text-[#A1A1AA]">{label}</div>
+        </div>
+      );
+    }
+
+    function XPRulesCard() {
+      return (
+        <div className="rounded-2xl p-[18px] ring-soft" style={{background:"var(--surface)"}}>
+          <div className="text-[16px] font-semibold text-white">Как зарабатывать XP</div>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {XP_RULES.map((r) => (
+              <div key={r.label} className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{background: tintBg[r.tint]}}>
+                  <Icon name={r.icon} size={18} strokeWidth={2.25} style={{color: tintFg[r.tint]}} />
+                </div>
+                <div className="flex-1 text-[14px] text-white">{r.label}</div>
+                <div className="px-2.5 py-1 rounded-full text-[11px] font-semibold tab-num"
+                     style={{background:"rgba(139,92,246,0.14)", color:"#A78BFA"}}>
+                  {r.xp}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function FilterChips({ active, onChange }) {
+      return (
+        <div className="flex gap-2 overflow-x-auto no-bar -mx-4 px-4">
+          {FILTERS.map((f) => {
+            const isActive = f.id === active;
+            return (
+              <button
+                key={f.id}
+                onClick={() => onChange(f.id)}
+                className={"shrink-0 rounded-full text-[13px] font-medium px-4 py-2 transition " + (isActive ? "chip-active" : "")}
+                style={!isActive ? {background:"var(--elevated)", color:"#A1A1AA"} : {}}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function AchievementTile({ a }) {
+      // Three visual variants: unlocked / locked / hidden
+      if (a.hidden) {
+        return (
+          <div className="rounded-2xl h-[108px] p-2.5 flex flex-col items-center justify-center text-center ring-soft"
+               style={{background:"var(--elevated)"}}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:"rgba(255,255,255,0.04)"}}>
+              <Icon name="help-circle" size={20} strokeWidth={2.25} style={{color:"#52525B"}} />
+            </div>
+            <div className="mt-2 text-[11px] text-[#71717A] leading-tight">Скрытая<br/>награда</div>
+          </div>
+        );
+      }
+      if (a.unlocked) {
+        return (
+          <div className="relative rounded-2xl h-[108px] p-2.5 flex flex-col items-center text-center"
+               style={{
+                 background: "linear-gradient(180deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.08) 100%)",
+                 boxShadow: "inset 0 0 0 1px rgba(245,158,11,0.28)"
+               }}>
+            <div className="absolute top-1.5 right-1.5 w-[18px] h-[18px] rounded-full flex items-center justify-center"
+                 style={{background:"linear-gradient(135deg,#F59E0B,#D97706)"}}>
+              <Icon name="check" size={11} strokeWidth={3} style={{color:"#fff"}} />
+            </div>
+            <div className="mt-2 w-10 h-10 rounded-xl flex items-center justify-center"
+                 style={{background:"rgba(245,158,11,0.20)"}}>
+              <Icon name={a.icon} size={22} strokeWidth={2.1} style={{color:"#F59E0B"}} />
+            </div>
+            <div className="mt-2 text-[12px] font-medium text-white leading-tight px-1">{a.name}</div>
+            <div className="mt-auto text-[11px] font-semibold tab-num" style={{color:"#F59E0B"}}>+{a.xp} XP</div>
+          </div>
+        );
+      }
+      // locked with progress
+      const pct = a.progress ? Math.min(100, Math.round((a.progress.cur / a.progress.max) * 100)) : 0;
+      return (
+        <div className="rounded-2xl h-[108px] p-2.5 flex flex-col items-center text-center ring-soft"
+             style={{background:"var(--elevated)"}}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+               style={{background:"rgba(255,255,255,0.04)"}}>
+            <Icon name={a.icon} size={18} strokeWidth={2.25} style={{color:"#52525B"}} />
+          </div>
+          <div className="mt-1.5 text-[11px] text-[#71717A] leading-tight px-1">{a.name}</div>
+          {a.progress ? (
+            <div className="w-full mt-auto">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-[#71717A] tab-num">{a.progress.cur}/{a.progress.max}</span>
+                <span className="text-[10px] text-[#71717A] tab-num">+{a.xp}</span>
+              </div>
+              <div className="h-[3px] rounded-full" style={{background:"rgba(255,255,255,0.06)"}}>
+                <div className="h-full rounded-full" style={{width: pct + "%", background:"#52525B"}} />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-auto text-[10px] text-[#71717A] tab-num">+{a.xp} XP</div>
+          )}
+        </div>
+      );
+    }
+
+    function NextRewardBanner() {
+      return (
+        <div className="rounded-2xl p-4 gold-banner-bg">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center"
+                 style={{background:"rgba(245,158,11,0.20)"}}>
+              <Icon name="trophy" size={24} strokeWidth={2.1} style={{color:"#F59E0B"}} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold tracking-[0.12em] uppercase" style={{color:"#F59E0B"}}>
+                Ближайшая награда
+              </div>
+              <div className="mt-0.5 text-[15px] font-semibold text-white truncate">
+                Тройка · ещё 1 отметка
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-[4px] rounded-full" style={{background:"rgba(255,255,255,0.08)"}}>
+                  <div className="h-full rounded-full" style={{width:"66%", background:"linear-gradient(90deg,#F59E0B,#D97706)"}} />
+                </div>
+                <span className="text-[10px] text-[#A1A1AA] tab-num">2/3</span>
+              </div>
+            </div>
+            <div className="px-2.5 py-1 rounded-full text-[11px] font-semibold tab-num shrink-0"
+                 style={{background:"linear-gradient(135deg,#F59E0B,#D97706)", color:"#1a0e00"}}>
+              +25 XP
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- App ----------
+    function App() {
+      const [filter, setFilter] = useState("all");
+
+      const visible = useMemo(() => {
+        if (filter === "all") return ACHIEVEMENTS;
+        if (filter === "hidden") return ACHIEVEMENTS.filter(a => a.hidden);
+        return ACHIEVEMENTS.filter(a => a.cat === filter);
+      }, [filter]);
+
+      return (
+        <div className="phone-frame">
+          <div className="phone-inner" data-screen-label="Levels & Rewards">
+            <div className="notch" />
+            <div className="scroll-area stage">
+              <StatusBar />
+              <MiniAppHeader />
+              <NavRow />
+
+              <div className="px-4 pb-1">
+                <LevelHero level={2} xp={175} xpForNext={300} nextLevel={3} />
+              </div>
+
+              <div className="px-4 mt-[18px]">
+                <LevelPath />
+              </div>
+
+              <div className="px-4 mt-[18px] flex gap-3">
+                <StatCard icon="trophy" tint="gold"   value="5/20" label="Наград получено" />
+                <StatCard icon="zap"    tint="purple" value="175"  label="Всего XP заработано" />
+              </div>
+
+              <div className="px-4 mt-[18px]">
+                <XPRulesCard />
+              </div>
+
+              {/* Achievements section */}
+              <div className="px-4 mt-[22px]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[20px] font-semibold text-white">Награды</div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                       style={{background:"rgba(245,158,11,0.14)"}}>
+                    <Icon name="trophy" size={12} strokeWidth={2.5} style={{color:"#F59E0B"}} />
+                    <span className="text-[12px] font-semibold tab-num" style={{color:"#F59E0B"}}>5 / 20</span>
+                  </div>
+                </div>
+
+                <FilterChips active={filter} onChange={setFilter} />
+
+                <div className="mt-3 grid grid-cols-3 gap-2.5">
+                  {visible.map((a, i) => <AchievementTile key={i} a={a} />)}
+                  {visible.length === 0 && (
+                    <div className="col-span-3 text-center text-[13px] text-[#71717A] py-10">
+                      Ничего не найдено
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-4 mt-[18px]">
+                <NextRewardBanner />
+              </div>
+
+              <div className="px-4 mt-5 mb-6 text-center">
+                <div className="text-[11px] text-[#52525B]">@my_hab1ts_tracker_bot</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

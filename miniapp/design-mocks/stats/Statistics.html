@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>HabitHero — Статистика</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  html, body { background: #050509; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #fff;
+  }
+  .tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  /* hide scrollbar on phone column */
+  .phone-scroll::-webkit-scrollbar { display: none; }
+  .phone-scroll { scrollbar-width: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+
+/* ---------- ICONS (Lucide-flat, single-color, stroke) ---------- */
+const Icon = ({ d, size = 20, stroke = "currentColor", fill = "none", sw = 2, children }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke}
+       strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    {d ? <path d={d}/> : children}
+  </svg>
+);
+
+const IconLayers = (p) => (
+  <Icon {...p}>
+    <path d="M12 2 2 7l10 5 10-5-10-5z"/>
+    <path d="m2 17 10 5 10-5"/>
+    <path d="m2 12 10 5 10-5"/>
+  </Icon>
+);
+const IconCheck = (p) => (
+  <Icon {...p}>
+    <path d="M20 6 9 17l-5-5"/>
+  </Icon>
+);
+const IconFire = (p) => (
+  <Icon {...p}>
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+  </Icon>
+);
+const IconFlame = (p) => (
+  <Icon {...p}>
+    <path d="M12 2c1 4 4 6 4 10a4 4 0 0 1-8 0c0-2 1-3 1-5"/>
+    <path d="M12 22a6 6 0 0 0 6-6c0-3-2-5-3-6"/>
+  </Icon>
+);
+const IconChevDown = (p) => <Icon {...p} d="m6 9 6 6 6-6"/>;
+const IconArrowRight = (p) => <Icon {...p} d="M5 12h14M13 5l7 7-7 7"/>;
+const IconHome = (p) => <Icon {...p}><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z"/></Icon>;
+const IconList = (p) => <Icon {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></Icon>;
+const IconPlus = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></Icon>;
+const IconChart = (p) => <Icon {...p}><path d="M3 3v18h18"/><path d="M7 15v-3M12 15V8M17 15v-5"/></Icon>;
+const IconUser = (p) => <Icon {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></Icon>;
+
+/* Achievements — flat 2D tinted */
+const AchTrophy = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9V4h12v5a6 6 0 0 1-12 0z"/>
+    <path d="M6 5H3v2a3 3 0 0 0 3 3M18 5h3v2a3 3 0 0 1-3 3"/>
+    <path d="M10 15h4l1 5H9z"/>
+  </svg>
+);
+const AchMedal = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 3h10l-2 6h-6L7 3z"/>
+    <circle cx="12" cy="15" r="6"/>
+    <path d="M12 12v6M9.5 15h5"/>
+  </svg>
+);
+const AchTarget = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="5"/>
+    <circle cx="12" cy="12" r="1.4" fill="#F59E0B"/>
+  </svg>
+);
+const AchStar = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.5 2.9 1-6.1L3 9.5l6.1-.9L12 3z"/>
+  </svg>
+);
+
+/* ---------- STATUS BAR ---------- */
+function StatusBar() {
+  return (
+    <div className="flex items-center justify-between px-7 pt-3 pb-2 text-white">
+      <span className="text-[15px] font-semibold tracking-tight tabular">9:41</span>
+      <div className="flex items-center gap-1.5">
+        {/* signal */}
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="white">
+          <rect x="0" y="7" width="3" height="4" rx="0.6"/>
+          <rect x="4.5" y="5" width="3" height="6" rx="0.6"/>
+          <rect x="9" y="2.5" width="3" height="8.5" rx="0.6"/>
+          <rect x="13.5" y="0" width="3" height="11" rx="0.6"/>
+        </svg>
+        {/* wifi */}
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="white">
+          <path d="M7.5 2.5c2 0 3.9.8 5.3 2.2l1-1A8 8 0 0 0 7.5 1 8 8 0 0 0 1.2 3.7l1 1A7.4 7.4 0 0 1 7.5 2.5z"/>
+          <path d="M7.5 5.8c1.2 0 2.2.4 3 1.2l1-1a5 5 0 0 0-8 0l1 1A4 4 0 0 1 7.5 5.8z"/>
+          <circle cx="7.5" cy="9.3" r="1.2"/>
+        </svg>
+        {/* battery */}
+        <svg width="25" height="12" viewBox="0 0 25 12">
+          <rect x="0.5" y="0.5" width="21" height="11" rx="2.8" stroke="white" strokeOpacity="0.5" fill="none"/>
+          <rect x="2" y="2" width="18" height="8" rx="1.6" fill="white"/>
+          <rect x="22.5" y="3.6" width="1.4" height="4.8" rx="0.7" fill="white" fillOpacity="0.5"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- STAT CARD ---------- */
+function StatCard({ icon, tint, value, label }) {
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "#1A1A24" }}>
+      <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
+           style={{ background: tint.bg, color: tint.fg }}>
+        {icon}
+      </div>
+      <div>
+        <div className="text-[32px] font-bold leading-none tabular tracking-tight text-white">{value}</div>
+        <div className="text-[11px] mt-2 leading-tight" style={{ color: "#A1A1AA" }}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- WEEKLY BAR CHART ---------- */
+function WeeklyChart() {
+  const data = [
+    { d: "Пн", v: 3 },
+    { d: "Вт", v: 5 },
+    { d: "Ср", v: 4 },
+    { d: "Чт", v: 6 },
+    { d: "Пт", v: 5 },
+    { d: "Сб", v: 7 },
+    { d: "Вс", v: 2 },
+  ];
+  const max = 8;
+  const chartH = 132;
+  const avg = (data.reduce((s, x) => s + x.v, 0) / data.length).toFixed(1);
+  const gridVals = [6, 4, 2];
+
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#1A1A24" }}>
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="text-[16px] font-semibold text-white">Активность за неделю</h3>
+        <span className="text-[11px]" style={{ color: "#71717A" }}>21–27 мая</span>
+      </div>
+
+      <div className="relative" style={{ height: chartH }}>
+        {/* grid lines + y labels */}
+        {gridVals.map((g) => {
+          const top = chartH - (g / max) * chartH;
+          return (
+            <React.Fragment key={g}>
+              <div className="absolute left-6 right-0" style={{ top, height: 1, background: "rgba(255,255,255,0.05)" }} />
+              <div className="absolute left-0 text-[10px] tabular -translate-y-1/2"
+                   style={{ top, color: "#52525B" }}>{g}</div>
+            </React.Fragment>
+          );
+        })}
+
+        {/* bars */}
+        <div className="absolute left-6 right-0 top-0 bottom-0 flex items-end justify-between gap-1">
+          {data.map((b, i) => {
+            const h = (b.v / max) * chartH;
+            const intensity = b.v / max; // brighter when higher
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                <div className="text-[10px] tabular mb-1.5" style={{ color: "#A1A1AA", opacity: b.v > 0 ? 1 : 0.4 }}>{b.v}</div>
+                <div
+                  className="w-full rounded-t-md"
+                  style={{
+                    height: h,
+                    background: `linear-gradient(180deg, #A78BFA 0%, #8B5CF6 45%, #6366F1 100%)`,
+                    opacity: 0.55 + intensity * 0.45,
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* day labels */}
+      <div className="flex justify-between mt-2 ml-6">
+        {data.map((b, i) => (
+          <div key={i} className="flex-1 text-center text-[11px]" style={{ color: "#71717A" }}>{b.d}</div>
+        ))}
+      </div>
+
+      <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+        <span className="text-[12px]" style={{ color: "#A1A1AA" }}>
+          Среднее: <span className="text-white font-semibold tabular">4.6</span> в день
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- HEATMAP ---------- */
+function Heatmap() {
+  const COLS = 13, ROWS = 7;
+  // deterministic pseudo-random pattern (seeded)
+  const data = useMemo(() => {
+    let s = 7;
+    const rng = () => {
+      s = (s * 9301 + 49297) % 233280;
+      return s / 233280;
+    };
+    const cells = [];
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const recent = c / COLS; // bias to slightly more recent activity
+        const roll = rng();
+        let v;
+        if (roll < 0.18 - recent * 0.08) v = 0;
+        else if (roll < 0.42) v = 1 + Math.floor(rng() * 2); // 1-2
+        else if (roll < 0.75) v = 3 + Math.floor(rng() * 2); // 3-4
+        else v = 5 + Math.floor(rng() * 3); // 5-7
+        cells.push(v);
+      }
+    }
+    return cells;
+  }, []);
+
+  const colorFor = (v) => {
+    if (v === 0) return "#252535";
+    if (v <= 2) return "rgba(16,185,129,0.25)";
+    if (v <= 4) return "rgba(16,185,129,0.55)";
+    return "#10B981";
+  };
+
+  const legendColors = ["#252535", "rgba(16,185,129,0.25)", "rgba(16,185,129,0.55)", "rgba(16,185,129,0.8)", "#10B981"];
+
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#1A1A24" }}>
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="text-[16px] font-semibold text-white">Активность за 90 дней</h3>
+        <span className="text-[11px]" style={{ color: "#71717A" }}>
+          <span className="text-white font-semibold tabular">247</span> отметок
+        </span>
+      </div>
+
+      <div className="flex gap-[4px]">
+        {Array.from({ length: COLS }).map((_, c) => (
+          <div key={c} className="flex flex-col gap-[4px] flex-1">
+            {Array.from({ length: ROWS }).map((_, r) => {
+              const v = data[c * ROWS + r];
+              return (
+                <div key={r} className="rounded-[3px] aspect-square"
+                     style={{ background: colorFor(v) }} />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 mt-4">
+        <span className="text-[11px]" style={{ color: "#71717A" }}>меньше</span>
+        <div className="flex gap-[3px]">
+          {legendColors.map((c, i) => (
+            <div key={i} className="w-2 h-2 rounded-sm" style={{ background: c }} />
+          ))}
+        </div>
+        <span className="text-[11px]" style={{ color: "#71717A" }}>больше</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- TOP HABITS ---------- */
+function TopHabits() {
+  const items = [
+    { name: "Утренняя зарядка", streak: 47, best: 47 },
+    { name: "Здоровое питание", streak: 21, best: 35 },
+    { name: "Читать",           streak: 12, best: 28 },
+  ];
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#1A1A24" }}>
+      <h3 className="text-[16px] font-semibold text-white mb-4">Топ привычек по стрику</h3>
+      <div className="flex flex-col gap-3.5">
+        {items.map((h, i) => {
+          const pct = Math.round((h.streak / h.best) * 100);
+          return (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                   style={{ background: "rgba(249,115,22,0.14)", color: "#F97316" }}>
+                <IconFire size={18} sw={2.2}/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <span className="text-[14px] text-white truncate pr-2">{h.name}</span>
+                  <span className="text-[13px] tabular flex-shrink-0" style={{ color: "#F97316" }}>
+                    <span className="font-semibold">{h.streak}</span> <span style={{ color: "#71717A" }}>дн.</span>
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#252535" }}>
+                  <div className="h-full rounded-full"
+                       style={{
+                         width: `${pct}%`,
+                         background: "linear-gradient(90deg,#F97316 0%, #FB923C 100%)",
+                       }}/>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- ACHIEVEMENTS ---------- */
+function Achievements() {
+  const items = [
+    { Icon: AchTarget,  name: "Сотка" },
+    { Icon: AchMedal,   name: "Тройка" },
+    { Icon: AchStar,    name: "Десятка" },
+    { Icon: AchTrophy,  name: "Пятый уровень" },
+  ];
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#1A1A24" }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[16px] font-semibold text-white">Последние достижения</h3>
+        <button className="text-[13px] flex items-center gap-1" style={{ color: "#8B5CF6" }}>
+          Все <IconArrowRight size={13} sw={2.4}/>
+        </button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {items.map(({ Icon: A, name }, i) => (
+          <div key={i} className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                 style={{ background: "rgba(245,158,11,0.12)" }}>
+              <A size={28}/>
+            </div>
+            <span className="text-[11px] text-center leading-tight" style={{ color: "#A1A1AA" }}>{name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- BOTTOM NAV ---------- */
+function BottomNav() {
+  const items = [
+    { Icon: IconHome, label: "Главная" },
+    { Icon: IconList, label: "Привычки" },
+    { Icon: IconPlus, label: "Добавить", center: true },
+    { Icon: IconChart, label: "Стата", active: true },
+    { Icon: IconUser, label: "Профиль" },
+  ];
+  return (
+    <div className="border-t backdrop-blur"
+         style={{ background: "rgba(10,10,15,0.92)", borderColor: "rgba(255,255,255,0.05)" }}>
+      <div className="flex items-stretch justify-between px-2 pt-2.5 pb-6">
+        {items.map(({ Icon: I, label, active, center }, i) => (
+          <button key={i} className="flex-1 flex flex-col items-center gap-1 pt-1">
+            <div className={"flex items-center justify-center " + (center ? "w-11 h-11 rounded-2xl" : "")}
+                 style={center ? { background: "linear-gradient(135deg,#8B5CF6 0%, #6366F1 100%)" } : {}}>
+              <I size={center ? 24 : 22} stroke={center ? "#fff" : active ? "#8B5CF6" : "#71717A"} sw={center ? 2.2 : 2}/>
+            </div>
+            {!center && (
+              <span className="text-[10px]" style={{ color: active ? "#8B5CF6" : "#71717A" }}>{label}</span>
+            )}
+            {center && <span className="text-[10px]" style={{ color: "#71717A" }}>{label}</span>}
+            {active && (
+              <div className="w-1 h-1 rounded-full -mt-0.5" style={{ background: "#8B5CF6" }} />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- PERIOD CHIP ---------- */
+function PeriodChip() {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("30 дней");
+  const opts = ["7 дней", "30 дней", "90 дней", "Всё время"];
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[13px] text-white"
+        style={{ background: "#1A1A24" }}>
+        {val}
+        <IconChevDown size={14} sw={2.4} stroke="#A1A1AA"/>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 rounded-xl py-1.5 z-30 min-w-[140px] shadow-2xl"
+             style={{ background: "#252535", border: "1px solid rgba(255,255,255,0.06)" }}>
+          {opts.map(o => (
+            <button key={o}
+                    onClick={() => { setVal(o); setOpen(false); }}
+                    className="w-full px-3.5 py-2 text-left text-[13px] flex items-center justify-between hover:bg-white/5"
+                    style={{ color: o === val ? "#fff" : "#A1A1AA" }}>
+              {o}
+              {o === val && <IconCheck size={14} stroke="#8B5CF6" sw={2.6}/>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- APP ---------- */
+function App() {
+  return (
+    <div style={{ background: "#050509" }} className="min-h-screen w-full flex items-start justify-center py-8">
+      {/* Phone shell — 480px */}
+      <div
+        data-screen-label="Stats"
+        className="relative overflow-hidden"
+        style={{
+          width: 480,
+          height: 980,
+          borderRadius: 44,
+          background: "#0A0A0F",
+          boxShadow: "0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 0 0 6px #000",
+        }}>
+        {/* dynamic island */}
+        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-50"
+             style={{ width: 120, height: 32, borderRadius: 20, background: "#000" }} />
+
+        <div className="h-full flex flex-col">
+          {/* 1. Status bar */}
+          <StatusBar/>
+
+          {/* Scroll content */}
+          <div className="flex-1 overflow-y-auto phone-scroll">
+            {/* 2. Header row */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-4">
+              <h1 className="text-[26px] font-semibold text-white tracking-tight">Статистика</h1>
+              <PeriodChip/>
+            </div>
+
+            {/* 3. Stats grid */}
+            <div className="px-4 grid grid-cols-2 gap-3">
+              <StatCard
+                icon={<IconLayers size={20}/>}
+                tint={{ bg: "rgba(139,92,246,0.14)", fg: "#A78BFA" }}
+                value="8" label="Активных привычек"/>
+              <StatCard
+                icon={<IconCheck size={20} sw={2.4}/>}
+                tint={{ bg: "rgba(16,185,129,0.14)", fg: "#34D399" }}
+                value="247" label="Всего отметок"/>
+              <StatCard
+                icon={<IconFire size={20} sw={2.2}/>}
+                tint={{ bg: "rgba(249,115,22,0.14)", fg: "#F97316" }}
+                value="47" label="Лучший стрик (дней)"/>
+              <StatCard
+                icon={<IconFlame size={20} sw={2.2}/>}
+                tint={{ bg: "rgba(6,182,212,0.14)", fg: "#22D3EE" }}
+                value="3" label="Активных стриков"/>
+            </div>
+
+            {/* 4. Weekly */}
+            <div className="px-4 mt-4">
+              <WeeklyChart/>
+            </div>
+
+            {/* 5. Heatmap */}
+            <div className="px-4 mt-4">
+              <Heatmap/>
+            </div>
+
+            {/* 6. Top habits */}
+            <div className="px-4 mt-4">
+              <TopHabits/>
+            </div>
+
+            {/* 7. Achievements */}
+            <div className="px-4 mt-4">
+              <Achievements/>
+            </div>
+
+            <div className="h-6"/>
+          </div>
+
+          {/* 8. Bottom nav */}
+          <BottomNav/>
+        </div>
+
+        {/* home indicator */}
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-50"
+             style={{ width: 130, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.35)" }} />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

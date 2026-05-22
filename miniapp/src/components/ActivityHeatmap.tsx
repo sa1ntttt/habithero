@@ -4,13 +4,22 @@ interface Props {
   weeks?: number; // default 13 weeks (~ 90 days)
 }
 
-function colorClass(count: number, max: number): string {
-  if (count === 0) return "bg-tg-secondary-bg";
+// Dark-theme emerald scale (0 = empty surface, 4 = brightest)
+const LEVEL_BG = [
+  "rgba(255,255,255,0.05)",
+  "rgba(16,185,129,0.22)",
+  "rgba(16,185,129,0.45)",
+  "rgba(16,185,129,0.7)",
+  "#10B981",
+];
+
+function levelFor(count: number, max: number): number {
+  if (count <= 0) return 0;
   const ratio = max > 0 ? count / max : 0;
-  if (ratio < 0.25) return "bg-emerald-200";
-  if (ratio < 0.5) return "bg-emerald-400";
-  if (ratio < 0.75) return "bg-emerald-500";
-  return "bg-emerald-600";
+  if (ratio < 0.25) return 1;
+  if (ratio < 0.5) return 2;
+  if (ratio < 0.75) return 3;
+  return 4;
 }
 
 function isoDate(d: Date) {
@@ -24,7 +33,6 @@ export function ActivityHeatmap({ counts, weeks = 13 }: Props) {
   // Start: Monday of (today - weeks*7 days)
   const start = new Date(today);
   start.setDate(start.getDate() - weeks * 7);
-  // Align to Monday
   const weekday = (start.getDay() + 6) % 7;
   start.setDate(start.getDate() - weekday);
 
@@ -50,18 +58,30 @@ export function ActivityHeatmap({ counts, weeks = 13 }: Props) {
       <div className="flex gap-[3px]">
         {cols.map((col, i) => (
           <div key={i} className="flex flex-col gap-[3px]">
-            {col.map((cell, j) => (
-              <div
-                key={j}
-                title={cell.count >= 0 ? `${isoDate(cell.date)} — ${cell.count}` : ""}
-                className={`h-3 w-3 rounded-[3px] ${
-                  cell.count < 0 ? "opacity-0" : colorClass(cell.count, max)
-                }`}
-              />
-            ))}
+            {col.map((cell, j) => {
+              const empty = cell.count < 0;
+              const lvl = empty ? 0 : levelFor(cell.count, max);
+              return (
+                <div
+                  key={j}
+                  title={!empty ? `${isoDate(cell.date)} — ${cell.count}` : ""}
+                  className="h-3 w-3 rounded-[3px]"
+                  style={{
+                    background: empty ? "transparent" : LEVEL_BG[lvl],
+                    border:
+                      empty || lvl > 0
+                        ? "none"
+                        : "1px solid rgba(255,255,255,0.04)",
+                  }}
+                />
+              );
+            })}
           </div>
         ))}
       </div>
     </div>
   );
 }
+
+// Exported for the Stats legend
+export const HEATMAP_LEVEL_BG = LEVEL_BG;

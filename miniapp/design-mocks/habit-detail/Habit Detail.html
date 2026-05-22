@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HabitHero · Деталь привычки</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  html, body { background: #050509; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color-scheme: dark;
+  }
+  .tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  /* hide scrollbar inside the phone */
+  .phone-scroll::-webkit-scrollbar { width: 0; height: 0; }
+  .phone-scroll { scrollbar-width: none; }
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.55); }
+    100% { box-shadow: 0 0 0 8px rgba(139,92,246,0); }
+  }
+  .ring-today { animation: pulseRing 2.2s ease-out infinite; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in > * { animation: fadeIn 0.5s ease-out backwards; }
+  .fade-in > *:nth-child(1) { animation-delay: 0.02s; }
+  .fade-in > *:nth-child(2) { animation-delay: 0.06s; }
+  .fade-in > *:nth-child(3) { animation-delay: 0.10s; }
+  .fade-in > *:nth-child(4) { animation-delay: 0.14s; }
+  .fade-in > *:nth-child(5) { animation-delay: 0.18s; }
+  .fade-in > *:nth-child(6) { animation-delay: 0.22s; }
+  .fade-in > *:nth-child(7) { animation-delay: 0.26s; }
+</style>
+</head>
+<body class="min-h-screen flex items-start justify-center py-10">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+  const { useState, useRef, useEffect } = React;
+
+  /* ─────────────────────── Icons (flat 2D, Lucide-style) ─────────────────────── */
+  const stroke = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2 };
+
+  const Icon = {
+    Back: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M15 18l-6-6 6-6"/></svg>),
+    More: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>),
+    Book: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5"/><path d="M4 4.5v17A2.5 2.5 0 0 0 6.5 19H20"/></svg>),
+    Flame: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>),
+    Trophy: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>),
+    Snowflake: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M2 12h20"/><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="m19.07 4.93-14.14 14.14"/><path d="M12 5l-2-2 2-2 2 2-2 2z" transform="translate(0 -1)"/></svg>),
+    Check: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>),
+    Dot: (p)=>(<svg viewBox="0 0 24 24" {...p}><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>),
+    Ellipsis: (p)=>(<svg viewBox="0 0 24 24" {...p}><circle cx="6"  cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></svg>),
+    Bell: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M6 8a6 6 0 1 1 12 0c0 6 3 7 3 7H3s3-1 3-7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>),
+    Pencil: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>),
+    Plus: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M12 5v14M5 12h14"/></svg>),
+    Sparkles: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>),
+    Calendar: (p)=>(<svg viewBox="0 0 24 24" {...stroke} {...p}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>),
+  };
+
+  /* ─────────────────────── Status bar ─────────────────────── */
+  function StatusBar() {
+    return (
+      <div className="relative h-[44px] w-full flex items-center justify-between px-7 text-white pt-1 select-none">
+        <span className="text-[15px] font-semibold tabular tracking-tight">9:41</span>
+        <div className="flex items-center gap-1.5">
+          {/* signal */}
+          <svg width="18" height="11" viewBox="0 0 18 11"><g fill="#fff">
+            <rect x="0"  y="7"   width="3" height="4" rx="0.7"/>
+            <rect x="5"  y="4.5" width="3" height="6.5" rx="0.7"/>
+            <rect x="10" y="2"   width="3" height="9" rx="0.7"/>
+            <rect x="15" y="0"   width="3" height="11" rx="0.7" opacity="0.4"/>
+          </g></svg>
+          {/* wifi */}
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="#fff"><path d="M8 3.2c2.2 0 4.2.85 5.6 2.25l1.05-1.05A8.5 8.5 0 0 0 8 1.5 8.5 8.5 0 0 0 1.35 4.4L2.4 5.45A7.8 7.8 0 0 1 8 3.2zm0 3.4c1.3 0 2.5.5 3.4 1.35l1.05-1.05A6 6 0 0 0 8 5.1a6 6 0 0 0-4.45 1.8l1.05 1.05A4.85 4.85 0 0 1 8 6.6zM8 9.8a1.4 1.4 0 1 0 0 .01z"/><circle cx="8" cy="9.4" r="1.3"/></svg>
+          {/* battery */}
+          <svg width="26" height="12" viewBox="0 0 26 12">
+            <rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="#fff" strokeOpacity="0.4" fill="none"/>
+            <rect x="2" y="2" width="19" height="8" rx="1.6" fill="#fff"/>
+            <rect x="23.5" y="4" width="1.4" height="4" rx="0.7" fill="#fff" opacity="0.5"/>
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Tinted icon container ─────────────────────── */
+  function IconTile({ color, size = 44, radius = 14, children }) {
+    return (
+      <div
+        className="flex items-center justify-center shrink-0"
+        style={{
+          width: size, height: size,
+          borderRadius: radius,
+          background: color + '24',  // ~14% alpha (hex 24 = 36/255)
+          color: color,
+        }}>
+        {children}
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Hero ─────────────────────── */
+  function HeroCard() {
+    return (
+      <div className="rounded-3xl bg-[#1A1A24] p-5 mx-4 ring-1 ring-white/[0.04]">
+        <div className="flex items-center gap-4">
+          <IconTile color="#F59E0B" size={56} radius={18}>
+            <Icon.Book width="28" height="28" />
+          </IconTile>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-white/95 text-[24px] font-bold leading-tight tracking-tight">Читать</h1>
+            <p className="mt-1 text-[13px] text-[#A1A1AA] flex items-center gap-1.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-[#10B981]/70" />
+              Каждый день · 30 страниц
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-[13px] italic leading-snug text-[#71717A]">
+          «Хотя бы 30 страниц художки или нон-фикшн перед сном.»
+        </p>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Stat cards ─────────────────────── */
+  function StatCard({ icon, color, value, suffix, label }) {
+    return (
+      <div className="flex-1 rounded-2xl bg-[#1A1A24] ring-1 ring-white/[0.04] p-3.5 flex flex-col items-center text-center">
+        <div className="flex items-center justify-center mb-2" style={{ color }}>
+          {icon}
+        </div>
+        <div className="flex items-baseline gap-1">
+          <span className="text-[32px] leading-none font-bold tabular text-white/95 tracking-tight">{value}</span>
+          {suffix && <span className="text-[15px] text-[#A1A1AA] font-medium tabular">{suffix}</span>}
+        </div>
+        <div className="mt-1.5 text-[11px] text-[#71717A] tracking-[0.02em]">{label}</div>
+      </div>
+    );
+  }
+
+  function StatsRow() {
+    return (
+      <div className="px-4 flex gap-2.5">
+        <StatCard icon={<Icon.Flame width="18" height="18"/>}      color="#F97316" value="12"  label="Текущий стрик" />
+        <StatCard icon={<Icon.Trophy width="18" height="18"/>}     color="#F59E0B" value="47"  label="Рекорд" />
+        <StatCard icon={<Icon.Snowflake width="18" height="18"/>}  color="#06B6D4" value="2"  suffix="/ 2" label="Заморозок" />
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Section header ─────────────────────── */
+  function SectionHead({ title, action, onAction }) {
+    return (
+      <div className="px-4 flex items-end justify-between mb-2.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#71717A]">{title}</h3>
+        {action && (
+          <button onClick={onAction} className="text-[12px] font-semibold text-[#A78BFA] hover:text-[#C4B5FD] transition active:scale-95 flex items-center gap-1">
+            {action}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Last 7 days ─────────────────────── */
+  function DaySquare({ day, state }) {
+    // state: 'done' | 'missed' | 'today'
+    const base = "relative aspect-square rounded-xl flex flex-col items-center justify-between py-1.5 transition";
+    if (state === 'done') {
+      return (
+        <div className={base + " bg-[#10B981]/[0.14]"}>
+          <span className="text-[13px] font-bold tabular text-white/85">{day}</span>
+          <span className="text-[#10B981]"><Icon.Check width="16" height="16" strokeWidth="2.8"/></span>
+        </div>
+      );
+    }
+    if (state === 'missed') {
+      return (
+        <div className={base + " bg-[#F43F5E]/[0.10]"}>
+          <span className="text-[13px] font-bold tabular text-white/60">{day}</span>
+          <span className="text-[#F43F5E]/70"><Icon.Dot width="16" height="16"/></span>
+        </div>
+      );
+    }
+    // today
+    return (
+      <div className={base + " bg-[#252535] ring-1 ring-[#8B5CF6]/60 ring-today"}>
+        <span className="text-[13px] font-bold tabular text-white">{day}</span>
+        <span className="text-[#A78BFA]"><Icon.Ellipsis width="16" height="16"/></span>
+      </div>
+    );
+  }
+
+  function LastSevenDays() {
+    const days = [
+      { d: 12, s: 'done' },
+      { d: 13, s: 'done' },
+      { d: 14, s: 'done' },
+      { d: 15, s: 'done' },
+      { d: 16, s: 'missed' },
+      { d: 17, s: 'done' },
+      { d: 18, s: 'today' },
+    ];
+    const weekdays = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    return (
+      <div>
+        <SectionHead title="Последние 7 дней" />
+        <div className="px-4">
+          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+            {weekdays.map((w, i) => (
+              <div key={i} className="text-center text-[10px] font-medium uppercase tracking-wider text-[#52525B]">{w}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {days.map((x) => <DaySquare key={x.d} day={x.d} state={x.s} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Monthly stats 2x2 ─────────────────────── */
+  function MiniStat({ value, sub, label, accent, progress }) {
+    return (
+      <div className="rounded-2xl bg-[#1A1A24] ring-1 ring-white/[0.04] p-3.5">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[22px] font-bold tabular text-white/95 leading-none tracking-tight">{value}</span>
+          {sub && <span className="text-[12px] text-[#71717A] tabular">{sub}</span>}
+        </div>
+        <div className="mt-1.5 text-[12px] text-[#A1A1AA]">{label}</div>
+        {progress != null && (
+          <div className="mt-2.5 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: accent }} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function MonthlyStats() {
+    return (
+      <div>
+        <SectionHead title="Статистика за месяц" />
+        <div className="px-4 grid grid-cols-2 gap-2.5">
+          <MiniStat value="23" sub="/ 30 дней" label="Выполнено" progress={76} accent="#10B981" />
+          <MiniStat value="76%"                label="Процент успеха"   progress={76} accent="#8B5CF6" />
+          <MiniStat value="350" sub="XP"       label="Получено за месяц" />
+          <MiniStat value="2"   sub="из 2"     label="Заморозок использовано" />
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Toggle ─────────────────────── */
+  function Toggle({ on, onChange }) {
+    return (
+      <button
+        onClick={onChange}
+        className="relative h-7 w-[46px] rounded-full transition-colors duration-200 outline-none shrink-0"
+        style={{
+          background: on
+            ? 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)'
+            : 'rgba(255,255,255,0.08)',
+          boxShadow: on ? '0 4px 14px rgba(139,92,246,0.35)' : 'inset 0 0 0 1px rgba(255,255,255,0.04)',
+        }}>
+        <span
+          className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-200"
+          style={{ left: on ? 20 : 2 }} />
+      </button>
+    );
+  }
+
+  /* ─────────────────────── Reminders ─────────────────────── */
+  function DayChip({ label, on }) {
+    return (
+      <span
+        className="inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-md text-[10px] font-semibold tabular tracking-tight"
+        style={{
+          background: on ? 'rgba(139,92,246,0.16)' : 'rgba(255,255,255,0.04)',
+          color: on ? '#C4B5FD' : '#52525B',
+        }}>
+        {label}
+      </span>
+    );
+  }
+
+  function ReminderCard({ time, days, on, onToggle }) {
+    const all = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    return (
+      <div className="rounded-2xl bg-[#1A1A24] ring-1 ring-white/[0.04] p-3.5 flex items-center gap-3">
+        <IconTile color={on ? '#8B5CF6' : '#71717A'} size={40} radius={12}>
+          <Icon.Bell width="20" height="20" />
+        </IconTile>
+        <div className="min-w-0 flex-1">
+          <div className={"text-[20px] font-bold tabular leading-none " + (on ? "text-white/95" : "text-white/40")}>{time}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {all.map(d => <DayChip key={d} label={d} on={on && days.includes(d)} />)}
+          </div>
+        </div>
+        <Toggle on={on} onChange={onToggle} />
+      </div>
+    );
+  }
+
+  function Reminders() {
+    const [r1, setR1] = useState(true);
+    const [r2, setR2] = useState(false);
+    return (
+      <div>
+        <SectionHead title="Напоминания" action={<><Icon.Plus width="12" height="12" strokeWidth="2.8"/> Добавить</>} />
+        <div className="px-4 flex flex-col gap-2.5">
+          <ReminderCard time="21:30" days={['Пн','Вт','Ср','Чт','Пт']} on={r1} onToggle={()=>setR1(!r1)} />
+          <ReminderCard time="08:00" days={['Сб','Вс']}                on={r2} onToggle={()=>setR2(!r2)} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Actions ─────────────────────── */
+  function Actions() {
+    return (
+      <div className="px-4 flex flex-col gap-2">
+        <button className="h-12 w-full rounded-full bg-[#252535] ring-1 ring-white/[0.06] text-white/90 text-[15px] font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition hover:bg-[#2E2E40]">
+          <Icon.Pencil width="16" height="16"/> Изменить
+        </button>
+        <button className="h-11 w-full text-[14px] font-medium text-[#F43F5E]/85 hover:text-[#F43F5E] transition">
+          Архивировать
+        </button>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Header row ─────────────────────── */
+  function Header({ onBack, onMore }) {
+    return (
+      <div className="h-12 px-3 flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-1 px-2 py-1.5 -ml-2 rounded-lg text-[#A1A1AA] hover:text-white/95 active:scale-95 transition">
+          <Icon.Back width="20" height="20"/>
+          <span className="text-[15px] font-medium">Назад</span>
+        </button>
+        <button onClick={onMore} className="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-[#A1A1AA] hover:text-white/95 hover:bg-white/[0.04] active:scale-95 transition">
+          <Icon.More width="20" height="20"/>
+        </button>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Main screen ─────────────────────── */
+  function HabitDetailScreen() {
+    const scrollRef = useRef(null);
+    const [scrolled, setScrolled] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    useEffect(() => {
+      const el = scrollRef.current; if (!el) return;
+      const fn = () => setScrolled(el.scrollTop > 8);
+      el.addEventListener('scroll', fn, { passive: true });
+      return () => el.removeEventListener('scroll', fn);
+    }, []);
+
+    return (
+      <div className="relative w-full h-full overflow-hidden bg-[#0A0A0F]">
+        {/* ambient glow */}
+        <div className="pointer-events-none absolute -top-32 -left-24 w-[420px] h-[420px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.16) 0%, rgba(139,92,246,0) 60%)' }}/>
+        <div className="pointer-events-none absolute -top-40 -right-20 w-[380px] h-[380px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0) 60%)' }}/>
+
+        <StatusBar />
+
+        {/* Header — sticky-feeling top */}
+        <div className={"sticky top-0 z-30 transition-colors backdrop-blur-md " + (scrolled ? "bg-[#0A0A0F]/85 border-b border-white/[0.04]" : "bg-transparent")}>
+          <Header onBack={()=>{}} onMore={()=>setShowMenu(s=>!s)} />
+          {showMenu && (
+            <div className="absolute right-3 top-12 w-52 rounded-2xl bg-[#1A1A24] ring-1 ring-white/[0.06] shadow-2xl shadow-black/60 py-1 z-40 fade-in">
+              <button className="w-full text-left px-3.5 py-2.5 text-[14px] text-white/90 hover:bg-white/[0.04] flex items-center gap-2.5"><Icon.Pencil width="15" height="15"/> Изменить</button>
+              <button className="w-full text-left px-3.5 py-2.5 text-[14px] text-white/90 hover:bg-white/[0.04] flex items-center gap-2.5"><Icon.Calendar width="15" height="15"/> Просмотр истории</button>
+              <button className="w-full text-left px-3.5 py-2.5 text-[14px] text-white/90 hover:bg-white/[0.04] flex items-center gap-2.5"><Icon.Sparkles width="15" height="15"/> Поделиться</button>
+              <div className="h-px bg-white/[0.06] my-1"/>
+              <button className="w-full text-left px-3.5 py-2.5 text-[14px] text-[#F43F5E]/90 hover:bg-white/[0.04]">Архивировать</button>
+            </div>
+          )}
+        </div>
+
+        {/* Scroll area */}
+        <div ref={scrollRef} className="phone-scroll relative h-[calc(100%-44px-48px)] overflow-y-auto pb-4">
+          <div className="flex flex-col gap-6 pt-2 pb-2 fade-in">
+            <HeroCard />
+            <StatsRow />
+            <LastSevenDays />
+            <MonthlyStats />
+            <Reminders />
+            <Actions />
+            {/* bottom safe area */}
+            <div className="h-4"/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── Phone frame ─────────────────────── */
+  function PhoneFrame({ children }) {
+    return (
+      <div
+        className="relative"
+        style={{
+          width: 480,
+          height: 920,
+          borderRadius: 52,
+          padding: 10,
+          background: 'linear-gradient(180deg, #1c1c22 0%, #0c0c10 100%)',
+          boxShadow:
+            '0 60px 120px rgba(0,0,0,0.55), 0 20px 60px rgba(0,0,0,0.4),' +
+            ' inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 0 1px rgba(0,0,0,0.6)',
+        }}>
+        <div
+          className="relative w-full h-full overflow-hidden"
+          style={{ borderRadius: 42, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)' }}>
+          {children}
+          {/* dynamic island */}
+          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[110px] h-[32px] rounded-full bg-black z-50"/>
+          {/* home indicator */}
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-[120px] h-[4.5px] rounded-full bg-white/70 z-50"/>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────── App ─────────────────────── */
+  function App() {
+    return (
+      <div className="flex flex-col items-center gap-5">
+        <div className="text-center">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-white/30 font-semibold">HabitHero · Telegram Mini App</div>
+          <div className="text-white/80 text-[15px] mt-1 font-medium">Деталь привычки</div>
+        </div>
+        <PhoneFrame>
+          <HabitDetailScreen />
+        </PhoneFrame>
+        <div className="text-[11px] text-white/25 mt-1">480 × 920 · dark · ru-RU</div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -54,9 +54,14 @@ export function ScheduleEditor({ value, onChange }: Props) {
                     : [...value.days, i].sort();
                   onChange({ type: "weekdays", days: next });
                 }}
-                className={`rounded-lg py-2 text-xs font-medium ${
-                  selected ? "bg-brand-500 text-white" : "bg-tg-secondary-bg text-tg-hint"
-                }`}
+                className="rounded-lg py-2 text-xs font-medium"
+                style={{
+                  background: selected
+                    ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+                    : "#1A1A24",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  color: selected ? "white" : "#A1A1AA",
+                }}
               >
                 {name}
               </button>
@@ -72,11 +77,15 @@ export function ScheduleEditor({ value, onChange }: Props) {
               key={n}
               type="button"
               onClick={() => onChange({ type: "times_per_week", count: n })}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-                value.count === n
-                  ? "bg-brand-500 text-white"
-                  : "bg-tg-secondary-bg text-tg-hint"
-              }`}
+              className="flex-1 rounded-lg py-2 text-sm font-medium"
+              style={{
+                background:
+                  value.count === n
+                    ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+                    : "#1A1A24",
+                border: "1px solid rgba(255,255,255,0.05)",
+                color: value.count === n ? "white" : "#A1A1AA",
+              }}
             >
               {n}×
             </button>
@@ -91,11 +100,15 @@ export function ScheduleEditor({ value, onChange }: Props) {
               key={n}
               type="button"
               onClick={() => onChange({ type: "every_n_days", n })}
-              className={`rounded-lg px-3 py-2 text-sm font-medium ${
-                value.n === n
-                  ? "bg-brand-500 text-white"
-                  : "bg-tg-secondary-bg text-tg-hint"
-              }`}
+              className="rounded-lg px-3 py-2 text-sm font-medium"
+              style={{
+                background:
+                  value.n === n
+                    ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+                    : "#1A1A24",
+                border: "1px solid rgba(255,255,255,0.05)",
+                color: value.n === n ? "white" : "#A1A1AA",
+              }}
             >
               {n} дн
             </button>
@@ -119,9 +132,15 @@ function TypeBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-3 py-3 text-sm font-medium ${
-        active ? "bg-brand-500 text-white" : "bg-tg-secondary-bg text-tg-text"
-      }`}
+      className="rounded-xl px-3 py-3 text-sm font-medium"
+      style={{
+        background: active
+          ? "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)"
+          : "#1A1A24",
+        border: "1px solid rgba(255,255,255,0.05)",
+        color: active ? "white" : "rgba(255,255,255,0.95)",
+        boxShadow: active ? "0 4px 12px -2px rgba(139,92,246,0.3)" : "none",
+      }}
     >
       {children}
     </button>

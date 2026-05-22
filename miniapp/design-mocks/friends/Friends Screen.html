@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Habitrack — Друзья</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; background: #050509; min-height: 100vh; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    color: rgba(255,255,255,.95);
+  }
+  .tab-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { scrollbar-width: none; }
+  /* Subtle ambient glow under phone */
+  .stage-glow::before {
+    content: "";
+    position: absolute;
+    inset: auto 0 -20% 0;
+    height: 60%;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(139,92,246,.18), transparent 60%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+  /* press feedback */
+  .press { transition: transform .12s ease, background-color .15s ease, opacity .15s ease; }
+  .press:active { transform: scale(.97); }
+  /* gradient utilities */
+  .bg-hero { background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); }
+  .bg-hero-deep { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); }
+  .bg-emerald-grad { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+  .ring-soft { box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset; }
+  /* hero pattern overlay */
+  .hero-pattern::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,.18), transparent 50%),
+      radial-gradient(80% 80% at 0% 100%, rgba(0,0,0,.18), transparent 60%);
+    pointer-events: none; border-radius: inherit;
+  }
+  .divider-row { border-top: 1px solid rgba(255,255,255,.05); }
+  /* Bottom tab dot */
+  @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.25);opacity:.85} }
+  .nav-dot { animation: pulseDot 2.2s ease-in-out infinite; }
+  /* Avatar stack ring */
+  .av-ring { box-shadow: 0 0 0 2px #1A1A24; }
+  /* Notification badge */
+  .notif {
+    background: linear-gradient(135deg, #F97316, #F59E0B);
+  }
+  /* Subtle reveal */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+  .fade-up { animation: fadeUp .5s ease both; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="friends.jsx"></script>
+  <script type="text/babel">
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
