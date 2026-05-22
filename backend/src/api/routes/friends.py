@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.friend import FriendOut
 from src.core.config import settings
@@ -18,7 +18,7 @@ class InviteLinkOut(BaseModel):
 
 
 @router.get("/invite-link", response_model=InviteLinkOut)
-async def get_invite_link(user: User = Depends(get_current_user)):
+async def get_invite_link(user: User = Depends(get_active_user)):
     # Best-effort bot username; falls back to hardcoded
     bot_username = "my_hab1ts_tracker_bot"
     code = f"friend_{user.id}"
@@ -30,7 +30,7 @@ async def get_invite_link(user: User = Depends(get_current_user)):
 
 @router.get("", response_model=list[FriendOut])
 async def list_friends(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = FriendshipRepository(session)
@@ -40,7 +40,7 @@ async def list_friends(
 @router.delete("/{friend_user_id}", status_code=204)
 async def unfriend(
     friend_user_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = FriendshipRepository(session)

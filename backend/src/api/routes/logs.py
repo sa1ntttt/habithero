@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.habit import HabitLogOut
 from src.db.models.user import User
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/logs", tags=["logs"])
 async def list_logs(
     start: date = Query(..., description="Start date inclusive"),
     end: date = Query(..., description="End date inclusive"),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(

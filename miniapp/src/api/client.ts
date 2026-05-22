@@ -11,6 +11,9 @@ import type {
   FriendOut,
   InviteLinkOut,
   FeedItem,
+  AccessOut,
+  InvoiceOut,
+  SubscriptionPlan,
 } from "../types/api";
 
 // Empty by default → relative paths (Vite proxy handles /api/* to backend).
@@ -116,6 +119,13 @@ export const api = {
 
   getFeed: (limit = 50, days = 30) =>
     request<FeedItem[]>(`/api/feed?limit=${limit}&days=${days}`),
+
+  getAccess: () => request<AccessOut>("/api/me/access"),
+  createInvoice: (plan: SubscriptionPlan) =>
+    request<InvoiceOut>("/api/payments/invoice", {
+      method: "POST",
+      body: JSON.stringify({ plan }),
+    }),
 };
 
 export { ApiError };

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.reminder import ReminderOut, ReminderCreate, ReminderUpdate
 from src.db.models.user import User
@@ -14,7 +14,7 @@ router = APIRouter(tags=["reminders"])
 @router.get("/api/habits/{habit_id}/reminders", response_model=list[ReminderOut])
 async def list_for_habit(
     habit_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     habit_repo = HabitRepository(session)
@@ -33,7 +33,7 @@ async def list_for_habit(
 async def create_reminder(
     habit_id: int,
     payload: ReminderCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     habit_repo = HabitRepository(session)
@@ -58,7 +58,7 @@ async def create_reminder(
 
 @router.get("/api/reminders", response_model=list[ReminderOut])
 async def list_all_reminders(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = ReminderRepository(session)
@@ -69,7 +69,7 @@ async def list_all_reminders(
 async def update_reminder(
     reminder_id: int,
     payload: ReminderUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = ReminderRepository(session)
@@ -82,7 +82,7 @@ async def update_reminder(
 @router.delete("/api/reminders/{reminder_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_reminder(
     reminder_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = ReminderRepository(session)

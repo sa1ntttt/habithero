@@ -8,6 +8,7 @@ import { NewHabit } from "./pages/NewHabit";
 import { Stats } from "./pages/Stats";
 import { Profile } from "./pages/Profile";
 import { Friends } from "./pages/Friends";
+import { Paywall } from "./pages/Paywall";
 import { Navigation } from "./components/Navigation";
 import { useTelegram } from "./hooks/useTelegram";
 import { useAppStore } from "./store/useAppStore";
@@ -17,10 +18,12 @@ export default function App() {
   useTelegram();
   const setUser = useAppStore((s) => s.setUser);
   const setHabits = useAppStore((s) => s.setHabits);
+  const setAccess = useAppStore((s) => s.setAccess);
   const setLoading = useAppStore((s) => s.setLoading);
   const setError = useAppStore((s) => s.setError);
   const loading = useAppStore((s) => s.loading);
   const error = useAppStore((s) => s.error);
+  const access = useAppStore((s) => s.access);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,10 +31,30 @@ export default function App() {
       setLoading(true);
       setError(null);
       try {
-        const [user, habits] = await Promise.all([api.getMe(), api.listHabits()]);
+        // Access is needed before anything else — if the user is expired,
+        // we still want /api/me and /api/me/access (no paywall on those)
+        // but listHabits would 402, so skip it for expired users.
+        const accessRes = await api.getAccess();
         if (cancelled) return;
-        setUser(user);
-        setHabits(habits);
+        setAccess(accessRes);
+
+        if (accessRes.status !== "expired") {
+          const [user, habits] = await Promise.all([
+            api.getMe(),
+            api.listHabits(),
+          ]);
+          if (cancelled) return;
+          setUser(user);
+          setHabits(habits);
+        } else {
+          // Still load /api/me so Paywall can greet by name
+          try {
+            const user = await api.getMe();
+            if (!cancelled) setUser(user);
+          } catch {
+            // ignore
+          }
+        }
       } catch (e) {
         if (cancelled) return;
         const msg =
@@ -46,7 +69,11 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [setUser, setHabits, setLoading, setError]);
+  }, [setUser, setHabits, setAccess, setLoading, setError]);
+
+  if (access?.status === "expired") {
+    return <Paywall />;
+  }
 
   return (
     <div className="min-h-full pb-20">

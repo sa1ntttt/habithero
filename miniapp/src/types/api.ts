@@ -135,3 +135,19 @@ export interface ReminderCreate {
   days_of_week?: number[];
   is_active?: boolean;
 }
+
+export type AccessStatus = "trial" | "paid" | "lifetime" | "expired";
+export type SubscriptionPlan = "month" | "lifetime";
+
+export interface AccessOut {
+  status: AccessStatus;
+  trial_ends_at: string | null;
+  paid_until: string | null;
+  days_left: number | null;
+}
+
+export interface InvoiceOut {
+  invoice_link: string;
+  plan: SubscriptionPlan;
+  stars: number;
+}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.achievement import AchievementOut
 from src.db.models.user import User
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/achievements", tags=["achievements"])
 
 @router.get("", response_model=list[AchievementOut])
 async def list_achievements(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = AchievementRepository(session)

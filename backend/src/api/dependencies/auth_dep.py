@@ -7,6 +7,7 @@ from src.core.logger import get_logger
 from src.api.dependencies.db_dep import get_session
 from src.db.models.user import User
 from src.db.repositories.user_repo import UserRepository
+from src.services.access_service import get_access_status
 
 log = get_logger(__name__)
 
@@ -41,4 +42,20 @@ async def get_current_user(
     )
     if created:
         log.info("user auto-registered via Mini App", telegram_id=tg_user["id"])
+    return user
+
+
+async def get_active_user(user: User = Depends(get_current_user)) -> User:
+    """Same as get_current_user, but rejects users with expired access.
+
+    Used on every endpoint that should be gated behind trial / paid sub.
+    Returns 402 Payment Required so the frontend can distinguish this
+    from 401 (auth) and show the paywall.
+    """
+    access = get_access_status(user)
+    if not access.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Subscription required (status: {access.status})",
+        )
     return user

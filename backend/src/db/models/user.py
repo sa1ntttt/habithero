@@ -22,4 +22,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Paid subscription expiry. NULL = trial-only. Far-future (2099+) = lifetime.
+    paid_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     habits: Mapped[list["Habit"]] = relationship("Habit", back_populates="user", lazy="selectin")

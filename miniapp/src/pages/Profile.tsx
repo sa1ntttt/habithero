@@ -5,16 +5,26 @@ import { api } from "../api/client";
 import { CardSurface } from "../components/ui/CardSurface";
 import { Bar } from "../components/ui/Bar";
 import { Glyph, glyphFor } from "../components/ui/Glyph";
-import type { AchievementOut } from "../types/api";
+import type { AchievementOut, AccessOut, SubscriptionPlan } from "../types/api";
+
+interface TelegramInvoiceApi {
+  openInvoice?: (
+    url: string,
+    callback?: (status: "paid" | "cancelled" | "failed" | "pending") => void,
+  ) => void;
+}
 
 export function Profile() {
   const user = useAppStore((s) => s.user);
-  const { isInsideTelegram, colorScheme } = useTelegram();
+  const access = useAppStore((s) => s.access);
+  const setAccess = useAppStore((s) => s.setAccess);
+  const { tg, isInsideTelegram, colorScheme } = useTelegram();
 
   const [achievements, setAchievements] = useState<AchievementOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [buyBusy, setBuyBusy] = useState<SubscriptionPlan | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +53,35 @@ export function Profile() {
 
   const initial = user?.first_name?.[0]?.toUpperCase() || "?";
   const visibleAchievements = showAll ? achievements : achievements.slice(0, 6);
+
+  const buy = async (plan: SubscriptionPlan) => {
+    setBuyBusy(plan);
+    try {
+      const { invoice_link } = await api.createInvoice(plan);
+      const tgInv = tg as unknown as TelegramInvoiceApi;
+      if (!tgInv.openInvoice) {
+        window.open(invoice_link, "_blank");
+        setBuyBusy(null);
+        return;
+      }
+      tgInv.openInvoice(invoice_link, async (status) => {
+        if (status === "paid") {
+          tg?.HapticFeedback?.notificationOccurred?.("success");
+          try {
+            const next = await api.getAccess();
+            setAccess(next);
+          } catch {
+            // ignore
+          }
+        } else if (status === "failed") {
+          tg?.HapticFeedback?.notificationOccurred?.("error");
+        }
+        setBuyBusy(null);
+      });
+    } catch {
+      setBuyBusy(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 text-white pb-6">
@@ -267,6 +306,15 @@ export function Profile() {
         )}
       </CardSurface>
 
+      {/* ─── Subscription ─────────────────────────────────── */}
+      {access && (
+        <SubscriptionCard
+          access={access}
+          buyBusy={buyBusy}
+          onBuy={buy}
+        />
+      )}
+
       {/* ─── Settings ─────────────────────────────────────── */}
       {user && (
         <>
@@ -400,4 +448,144 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
 
 function Divider() {
   return <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />;
+}
+
+function SubscriptionCard({
+  access,
+  buyBusy,
+  onBuy,
+}: {
+  access: AccessOut;
+  buyBusy: SubscriptionPlan | null;
+  onBuy: (plan: SubscriptionPlan) => void;
+}) {
+  const isLifetime = access.status === "lifetime";
+  const isPaid = access.status === "paid";
+  const isTrial = access.status === "trial";
+
+  let title = "Подписка";
+  let statusLine: string;
+  let statusColor = "#A1A1AA";
+  let badge: { text: string; color: string; bg: string } | null = null;
+
+  if (isLifetime) {
+    statusLine = "Доступ без ограничений";
+    badge = {
+      text: "Навсегда",
+      color: "#FBBF24",
+      bg: "rgba(251,191,36,0.15)",
+    };
+  } else if (isPaid && access.paid_until) {
+    const until = new Date(access.paid_until).toLocaleDateString("ru-RU");
+    statusLine = `Активна до ${until}`;
+    badge = {
+      text: "Активна",
+      color: "#34D399",
+      bg: "rgba(52,211,153,0.15)",
+    };
+  } else if (isTrial && access.days_left != null) {
+    statusLine = `Осталось ${access.days_left} ${access.days_left === 1 ? "день" : access.days_left < 5 ? "дня" : "дней"}`;
+    statusColor = access.days_left <= 5 ? "#FBBF24" : "#A1A1AA";
+    badge = {
+      text: "Пробный",
+      color: "#A78BFA",
+      bg: "rgba(167,139,250,0.16)",
+    };
+  } else {
+    statusLine = "Истёк";
+    statusColor = "#F87171";
+  }
+
+  return (
+    <>
+      <h2
+        style={{
+          margin: "8px 0 -4px",
+          fontSize: 18,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.95)",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {title}
+      </h2>
+      <CardSurface style={{ padding: 16 }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.95)",
+              }}
+            >
+              {isLifetime
+                ? "Навсегда"
+                : isPaid
+                  ? "Платная подписка"
+                  : "Пробный период"}
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: statusColor,
+                marginTop: 2,
+              }}
+            >
+              {statusLine}
+            </div>
+          </div>
+          {badge && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: badge.color,
+                background: badge.bg,
+                padding: "4px 10px",
+                borderRadius: 999,
+                letterSpacing: "0.02em",
+                textTransform: "uppercase",
+              }}
+            >
+              {badge.text}
+            </span>
+          )}
+        </div>
+
+        {!isLifetime && (
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => onBuy("month")}
+              disabled={buyBusy !== null}
+              className="flex-1 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              style={{
+                borderRadius: 12,
+                background:
+                  "linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)",
+                boxShadow: "0 4px 12px -2px rgba(139,92,246,0.4)",
+                cursor: buyBusy ? "default" : "pointer",
+              }}
+            >
+              {buyBusy === "month" ? "…" : "⭐ 150 / мес"}
+            </button>
+            <button
+              onClick={() => onBuy("lifetime")}
+              disabled={buyBusy !== null}
+              className="flex-1 py-2.5 text-sm font-semibold disabled:opacity-60"
+              style={{
+                borderRadius: 12,
+                background: "rgba(251,191,36,0.15)",
+                border: "1px solid rgba(251,191,36,0.32)",
+                color: "#FBBF24",
+                cursor: buyBusy ? "default" : "pointer",
+              }}
+            >
+              {buyBusy === "lifetime" ? "…" : "⭐ 500 навсегда"}
+            </button>
+          </div>
+        )}
+      </CardSurface>
+    </>
+  );
 }

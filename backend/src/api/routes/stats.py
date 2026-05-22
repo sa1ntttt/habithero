@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.stats import OverallStats
 from src.db.models.habit import Habit
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 @router.get("", response_model=OverallStats)
 async def overall_stats(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     total_habits_q = await session.execute(

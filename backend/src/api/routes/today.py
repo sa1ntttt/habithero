@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytz
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.habit import HabitOut, HabitLogOut
 from src.db.models.user import User
@@ -28,7 +28,7 @@ class TodayResponse(BaseModel):
 
 @router.get("", response_model=TodayResponse)
 async def get_today(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     tz = pytz.timezone(user.timezone)

@@ -1,11 +1,12 @@
 import { create } from "zustand";
-import type { UserOut, HabitOut, TodayItem } from "../types/api";
+import type { UserOut, HabitOut, TodayItem, AccessOut } from "../types/api";
 
 interface AppState {
   user: UserOut | null;
   habits: HabitOut[];
   today: TodayItem[];
   todayDate: string | null;
+  access: AccessOut | null;
   loading: boolean;
   error: string | null;
 
@@ -15,6 +16,7 @@ interface AppState {
   removeHabit: (id: number) => void;
   setToday: (date: string, items: TodayItem[]) => void;
   updateTodayItem: (habitId: number, patch: Partial<TodayItem>) => void;
+  setAccess: (access: AccessOut | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -24,6 +26,7 @@ export const useAppStore = create<AppState>((set) => ({
   habits: [],
   today: [],
   todayDate: null,
+  access: null,
   loading: false,
   error: null,
 
@@ -45,6 +48,7 @@ export const useAppStore = create<AppState>((set) => ({
         it.habit.id === habitId ? { ...it, ...patch } : it
       ),
     })),
+  setAccess: (access) => set({ access }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
 }));

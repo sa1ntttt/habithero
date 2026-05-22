@@ -5,6 +5,7 @@ import { HabitCard } from "../components/HabitCard";
 import { ValueModal } from "../components/ValueModal";
 import { CardSurface } from "../components/ui/CardSurface";
 import { Bar } from "../components/ui/Bar";
+import { TrialBanner } from "../components/ui/TrialBanner";
 import { api } from "../api/client";
 import { useTelegram } from "../hooks/useTelegram";
 import { levelTitle } from "../utils/levels";
@@ -13,6 +14,7 @@ import type { AchievementOut } from "../types/api";
 export function Dashboard() {
   const user = useAppStore((s) => s.user);
   const today = useAppStore((s) => s.today);
+  const access = useAppStore((s) => s.access);
   const setToday = useAppStore((s) => s.setToday);
   const updateTodayItem = useAppStore((s) => s.updateTodayItem);
   const upsertHabit = useAppStore((s) => s.upsertHabit);
@@ -146,6 +148,7 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-3.5 text-white">
+      <TrialBanner access={access} />
       {/* ─── Hero level card ─────────────────────────────── */}
       <div className="relative">
         <div

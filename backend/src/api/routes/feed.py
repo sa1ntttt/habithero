@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.feed import FeedItem
 from src.db.models.user import User
@@ -17,7 +17,7 @@ async def get_feed(
     limit: int = Query(50, ge=1, le=200),
     days: int = Query(30, ge=1, le=365),
     include_self: bool = Query(True),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Activity feed: own events + friends' events."""

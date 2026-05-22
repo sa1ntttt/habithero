@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import pytz
 
-from src.api.dependencies.auth_dep import get_current_user
+from src.api.dependencies.auth_dep import get_active_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.habit import (
     HabitOut,
@@ -28,7 +28,7 @@ def _user_today(user: User) -> date:
 
 @router.get("", response_model=list[HabitOut])
 async def list_habits(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -38,7 +38,7 @@ async def list_habits(
 @router.post("", response_model=HabitOut, status_code=status.HTTP_201_CREATED)
 async def create_habit(
     payload: HabitCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -56,7 +56,7 @@ async def create_habit(
 @router.get("/{habit_id}", response_model=HabitOut)
 async def get_habit(
     habit_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -70,7 +70,7 @@ async def get_habit(
 async def update_habit(
     habit_id: int,
     payload: HabitUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -83,7 +83,7 @@ async def update_habit(
 @router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def archive_habit(
     habit_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -98,7 +98,7 @@ async def get_logs(
     habit_id: int,
     start: date = Query(..., description="Start date inclusive"),
     end: date = Query(..., description="End date inclusive"),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     repo = HabitRepository(session)
@@ -111,7 +111,7 @@ async def get_logs(
 @router.post("/{habit_id}/reset_today", status_code=status.HTTP_204_NO_CONTENT)
 async def reset_today(
     habit_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Reset today's log to 0/failed (for quantity habits)."""
@@ -127,7 +127,7 @@ async def reset_today(
 async def checkin(
     habit_id: int,
     payload: CheckinRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_active_user),
     session: AsyncSession = Depends(get_session),
 ):
     from src.db.models.habit import HabitType

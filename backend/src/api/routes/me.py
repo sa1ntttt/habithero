@@ -4,8 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth_dep import get_current_user
 from src.api.dependencies.db_dep import get_session
 from src.api.schemas.user import UserOut, UserUpdate
+from src.api.schemas.access import AccessOut
 from src.db.models.user import User
 from src.db.repositories.user_repo import UserRepository
+from src.services.access_service import get_access_status
 from src.services.xp_service import xp_for_level, xp_to_next_level
 
 router = APIRouter(prefix="/api/me", tags=["me"])
@@ -49,3 +51,19 @@ async def update_me(
         await session.commit()
         await session.refresh(user)
     return _user_to_out(user)
+
+
+@router.get("/access", response_model=AccessOut)
+async def read_access(user: User = Depends(get_current_user)) -> AccessOut:
+    """Subscription / trial status for the current user.
+
+    Frontend uses this to decide whether to show the paywall, the trial
+    countdown banner, or nothing.
+    """
+    status = get_access_status(user)
+    return AccessOut(
+        status=status.status,
+        trial_ends_at=status.trial_ends_at,
+        paid_until=status.paid_until,
+        days_left=status.days_left,
+    )

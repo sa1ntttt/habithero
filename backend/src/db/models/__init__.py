@@ -6,6 +6,7 @@ from src.db.models.reminder import Reminder
 from src.db.models.achievement import Achievement, UserAchievement
 from src.db.models.friendship import Friendship, FriendshipStatus
 from src.db.models.activity import ActivityEvent
+from src.db.models.payment import Payment
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "Friendship",
     "FriendshipStatus",
     "ActivityEvent",
+    "Payment",
 ]
