@@ -85,8 +85,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=500, content={"detail": detail})
 
 
-@app.get("/health", tags=["system"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["system"])
 async def health() -> dict:
+    """Health check. Accepts HEAD too so UptimeRobot's default probe works."""
     return {"status": "ok"}
 
 
