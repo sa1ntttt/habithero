@@ -14,6 +14,8 @@ import type {
   AccessOut,
   InvoiceOut,
   SubscriptionPlan,
+  JointHabitOut,
+  JointHabitCreate,
 } from "../types/api";
 
 // Empty by default → relative paths (Vite proxy handles /api/* to backend).
@@ -126,6 +128,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ plan }),
     }),
+
+  listJointHabits: () => request<JointHabitOut[]>("/api/joint-habits"),
+  createJointHabit: (payload: JointHabitCreate) =>
+    request<JointHabitOut>("/api/joint-habits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  acceptJointHabit: (id: number) =>
+    request<JointHabitOut>(`/api/joint-habits/${id}/accept`, { method: "POST" }),
+  declineJointHabit: (id: number) =>
+    request<JointHabitOut>(`/api/joint-habits/${id}/decline`, { method: "POST" }),
+  leaveJointHabit: (id: number) =>
+    request<void>(`/api/joint-habits/${id}`, { method: "DELETE" }),
 };
 
 export { ApiError };

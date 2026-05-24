@@ -17,6 +17,7 @@ from src.api.routes import (
     friends,
     feed,
     payments,
+    joint_habits,
 )
 from src.bot.setup import create_bot_and_dispatcher
 from src.scheduler.scheduler import create_scheduler
@@ -99,3 +100,4 @@ app.include_router(achievements.router)
 app.include_router(friends.router)
 app.include_router(feed.router)
 app.include_router(payments.router)
+app.include_router(joint_habits.router)

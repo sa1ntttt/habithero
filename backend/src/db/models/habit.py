@@ -30,6 +30,11 @@ class Habit(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    # Optional link to a joint habit agreement (NULL = solo habit)
+    joint_habit_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("joint_habits.id", ondelete="SET NULL"), nullable=True
+    )
+
     user: Mapped["User"] = relationship("User", back_populates="habits")
     logs: Mapped[list["HabitLog"]] = relationship("HabitLog", back_populates="habit", lazy="selectin")
     streak: Mapped["Streak"] = relationship("Streak", back_populates="habit", uselist=False, lazy="selectin")

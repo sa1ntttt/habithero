@@ -151,3 +151,36 @@ export interface InvoiceOut {
   plan: SubscriptionPlan;
   stars: number;
 }
+
+export type JointHabitStatus = "pending" | "active" | "declined" | "ended";
+
+export interface JointPartnerInfo {
+  id: number;
+  first_name: string;
+  username: string | null;
+  level: number;
+}
+
+export interface JointHabitOut {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string | null;
+  schedule: Record<string, unknown>;
+  status: JointHabitStatus;
+  created_at: string;
+  accepted_at: string | null;
+  role: "creator" | "partner";
+  partner: JointPartnerInfo;
+  you_done_today: boolean;
+  partner_done_today: boolean;
+  shared_streak: number;
+}
+
+export interface JointHabitCreate {
+  partner_user_id: number;
+  name: string;
+  emoji?: string;
+  color?: string;
+  schedule?: Record<string, unknown>;
+}
